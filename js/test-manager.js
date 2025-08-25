@@ -30,6 +30,10 @@ class TestManager {
     
     // Add cleanup flag to prevent operations after destruction
     this.isDestroyed = false;
+
+    // Add new properties for solution analysis
+    this.filteredSolutionQuestions = [];
+    this.currentSolutionIndex = 0;
     
     // Bind methods to preserve context
     this.submitTest = this.submitTest.bind(this);
@@ -1678,6 +1682,178 @@ class TestManager {
     } catch (error) {
       console.error('Error updating sidebar stats:', error);
     }
+  }
+
+  // --- Solution Analysis Methods ---
+
+  initializeSolutionAnalysis() {
+      if (!this.isValid()) return;
+      try {
+          this.populateTopicFilter();
+          this.applySolutionFilters();
+      } catch (error) {
+          console.error('Error initializing solution analysis:', error);
+      }
+  }
+
+  populateTopicFilter() {
+      const topicSelect = document.getElementById('topic-filter-select');
+      if (!topicSelect) return;
+
+      const results = this.stateManager.getResults();
+      if (!results || !results.topicStats) return;
+
+      // Clear existing options except "All Topics"
+      topicSelect.innerHTML = '<option value="all">All Topics</option>';
+
+      const topics = Object.keys(results.topicStats);
+      topics.forEach(topic => {
+          const option = document.createElement('option');
+          option.value = topic;
+          option.textContent = topic;
+          topicSelect.appendChild(option);
+      });
+  }
+
+  applySolutionFilters() {
+      if (!this.isValid()) return;
+      try {
+          const results = this.stateManager.getResults();
+          if (!results || !results.questionResults) return;
+
+          // Get filter values from DOM
+          const statusFilter = document.querySelector('#solution-analysis-view .filter-btn.active')?.dataset.filter || 'all';
+          const topicFilter = document.getElementById('topic-filter-select')?.value || 'all';
+          const difficultyFilter = document.getElementById('difficulty-filter-select')?.value || 'all';
+
+          // Filter the question results
+          this.filteredSolutionQuestions = results.questionResults.filter(q => {
+              const statusMatch = statusFilter === 'all' || q.status === statusFilter || (statusFilter === 'answered' && q.status !== 'unanswered');
+              const topicMatch = topicFilter === 'all' || q.topic === topicFilter;
+              const difficultyMatch = difficultyFilter === 'all' || q.difficulty === difficultyFilter;
+              return statusMatch && topicMatch && difficultyMatch;
+          });
+
+          this.currentSolutionIndex = 0;
+          this.populateFilteredQuestionList();
+          this.displaySolutionForQuestion();
+
+      } catch (error) {
+          console.error('Error applying solution filters:', error);
+      }
+  }
+
+  populateFilteredQuestionList() {
+      const listContainer = document.getElementById('filtered-question-list');
+      if (!listContainer) return;
+
+      listContainer.innerHTML = ''; // Clear previous list
+
+      if (this.filteredSolutionQuestions.length === 0) {
+          listContainer.innerHTML = '<div class="no-results">No questions match the current filters.</div>';
+          return;
+      }
+
+      this.filteredSolutionQuestions.forEach((questionResult, index) => {
+          const item = document.createElement('div');
+          item.className = 'question-list-item';
+          item.dataset.index = index;
+          item.textContent = `Q${questionResult.questionId}`;
+
+          if (index === this.currentSolutionIndex) {
+              item.classList.add('active');
+          }
+
+          // Add status indicator
+          const statusIndicator = document.createElement('span');
+          statusIndicator.className = `status-dot ${questionResult.status}`;
+          item.prepend(statusIndicator);
+
+          item.addEventListener('click', () => {
+              this.currentSolutionIndex = index;
+              this.displaySolutionForQuestion();
+              // Update active class on list items
+              listContainer.querySelectorAll('.question-list-item').forEach(el => el.classList.remove('active'));
+              item.classList.add('active');
+          });
+
+          listContainer.appendChild(item);
+      });
+  }
+
+  displaySolutionForQuestion() {
+      if (!this.isValid()) return;
+      try {
+          const questionResult = this.filteredSolutionQuestions[this.currentSolutionIndex];
+          const allQuestions = this.getCurrentQuestions();
+
+          // Update counter
+          this.viewManager.updateElement('solution-q-num', `${this.currentSolutionIndex + 1} of ${this.filteredSolutionQuestions.length}`);
+
+          if (!questionResult) {
+              // Handle case with no matching questions
+              document.getElementById('solution-details').innerHTML = '<div class="no-results-card">No question to display.</div>';
+              return;
+          }
+
+          const questionData = allQuestions[questionResult.questionId - 1];
+          if (!questionData) return;
+
+          // Populate meta info
+          this.viewManager.updateElement('current-difficulty', questionData.difficulty);
+          this.viewManager.updateElement('current-topic', questionData.topic);
+          this.viewManager.updateElement('current-status', questionResult.status);
+          this.viewManager.updateElement('current-time', this.formatTime(questionResult.timeSpent * 1000));
+
+          // Populate question text
+          this.viewManager.updateElement('current-question-text', questionData.question);
+
+          // Populate options
+          const optionsContainer = document.getElementById('current-answer-options');
+          if (optionsContainer) {
+              optionsContainer.innerHTML = questionData.options.map((option, index) => {
+                  let classes = 'option-display';
+                  if (index === questionResult.correctAnswer) classes += ' correct';
+                  if (index === questionResult.userAnswer) classes += ' user-selected';
+                  if (index === questionResult.userAnswer && index !== questionResult.correctAnswer) classes += ' incorrect';
+
+                  return `<div class="${classes}">${option}</div>`;
+              }).join('');
+          }
+
+          // Populate solution
+          this.viewManager.updateElement('current-solution', questionData.solution, 'innerHTML');
+
+          // Update navigation buttons
+          document.getElementById('prev-solution-btn').disabled = this.currentSolutionIndex === 0;
+          document.getElementById('next-solution-btn').disabled = this.currentSolutionIndex >= this.filteredSolutionQuestions.length - 1;
+
+      } catch (error) {
+          console.error('Error displaying solution:', error);
+      }
+  }
+
+  navigateSolution(direction) {
+      const newIndex = this.currentSolutionIndex + direction;
+      if (newIndex >= 0 && newIndex < this.filteredSolutionQuestions.length) {
+          this.currentSolutionIndex = newIndex;
+          this.displaySolutionForQuestion();
+          // Update active class in list
+          const listContainer = document.getElementById('filtered-question-list');
+          if (listContainer) {
+              listContainer.querySelectorAll('.question-list-item').forEach(el => el.classList.remove('active'));
+              const activeItem = listContainer.querySelector(`[data-index="${newIndex}"]`);
+              if (activeItem) {
+                  activeItem.classList.add('active');
+                  activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              }
+          }
+      }
+  }
+  
+  showJumpToQuestionModal() {
+      console.log("Jump to question modal not implemented yet.");
+      alert("Jump to question functionality will be added in a future update!");
   }
 }
 

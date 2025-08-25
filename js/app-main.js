@@ -52,6 +52,9 @@ class MockTestApp {
       
       // Review answers view event listeners
       this.setupReviewAnswersEventListeners();
+
+      // Solution analysis view event listeners
+      this.setupSolutionAnalysisEventListeners();
       
       // Global event listeners
       this.setupGlobalEventListeners();
@@ -320,8 +323,8 @@ class MockTestApp {
     const reviewAnswersBtn = document.getElementById('review-answers-btn');
     if (reviewAnswersBtn) {
       reviewAnswersBtn.addEventListener('click', () => {
-        this.testManager.initializeReview();
-        this.viewManager.showView('review-answers');
+        this.testManager.initializeSolutionAnalysis();
+        this.viewManager.showView('solution-analysis');
       });
     }
 
@@ -370,6 +373,56 @@ class MockTestApp {
     const reviewNextBtn = document.getElementById('review-next-btn');
     if (reviewNextBtn) {
       reviewNextBtn.addEventListener('click', () => this.navigateReview(1));
+    }
+  }
+
+  // Setup solution analysis view event listeners
+  setupSolutionAnalysisEventListeners() {
+    // Back to results button
+    const backBtn = document.getElementById('analysis-back-to-results-btn');
+    if (backBtn) {
+      backBtn.addEventListener('click', () => this.viewManager.showView('result'));
+    }
+
+    // Filter buttons
+    const filterContainer = document.querySelector('#solution-analysis-view .analysis-controls');
+    if (filterContainer) {
+        filterContainer.addEventListener('click', (e) => {
+            if (e.target.matches('.filter-btn')) {
+                // Update active class
+                filterContainer.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                this.testManager.applySolutionFilters();
+            }
+        });
+    }
+
+    // Topic and Difficulty dropdowns
+    const topicSelect = document.getElementById('topic-filter-select');
+    if (topicSelect) {
+        topicSelect.addEventListener('change', () => this.testManager.applySolutionFilters());
+    }
+
+    const difficultySelect = document.getElementById('difficulty-filter-select');
+    if (difficultySelect) {
+        difficultySelect.addEventListener('change', () => this.testManager.applySolutionFilters());
+    }
+
+    // Navigation buttons
+    const prevBtn = document.getElementById('prev-solution-btn');
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => this.testManager.navigateSolution(-1));
+    }
+
+    const nextBtn = document.getElementById('next-solution-btn');
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => this.testManager.navigateSolution(1));
+    }
+    
+    // Jump to question modal
+    const jumpBtn = document.getElementById('jump-to-question-btn');
+    if (jumpBtn) {
+        jumpBtn.addEventListener('click', () => this.testManager.showJumpToQuestionModal());
     }
   }
 

@@ -2298,3 +2298,175 @@ input[type="file"].form-control:focus {
     display: none;
   }
 }
+
+/* ================================
+   Solution Analysis View Styles
+   ================================ */
+
+#solution-analysis-view .container {
+    max-width: 1280px;
+}
+
+.analysis-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-16) 0;
+    margin-bottom: var(--space-16);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.analysis-header .header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-16);
+}
+
+.analysis-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-16);
+    align-items: center;
+    padding: var(--space-16);
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-24);
+    border: 1px solid var(--color-card-border);
+}
+
+.filter-controls .filter-buttons {
+    display: flex;
+    gap: var(--space-8);
+}
+
+.solution-content {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: var(--space-24);
+}
+
+.question-navigation {
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-card-border);
+    padding: var(--space-8);
+    height: fit-content;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.question-list-item {
+    padding: var(--space-8) var(--space-12);
+    border-radius: var(--radius-base);
+    cursor: pointer;
+    font-weight: var(--font-weight-medium);
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    transition: background-color var(--duration-fast);
+}
+
+.question-list-item:hover {
+    background-color: var(--color-secondary);
+}
+
+.question-list-item.active {
+    background-color: var(--color-primary);
+    color: var(--color-btn-primary-text);
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.status-dot.correct { background-color: var(--color-success); }
+.status-dot.incorrect { background-color: var(--color-error); }
+.status-dot.unanswered { background-color: var(--color-warning); }
+
+.question-list-item.active .status-dot {
+    border: 1px solid var(--color-btn-primary-text);
+}
+
+.solution-details .question-card {
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-card-border);
+    overflow: hidden;
+}
+
+.solution-details .question-header {
+    padding: var(--space-16);
+    background: var(--color-secondary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.question-meta {
+    display: flex;
+    gap: var(--space-8);
+    align-items: center;
+}
+
+.solution-details .question-text {
+    padding: var(--space-24);
+    font-size: var(--font-size-lg);
+}
+
+.answer-options {
+    padding: 0 var(--space-24) var(--space-24);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+}
+
+.option-display {
+    padding: var(--space-12);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-base);
+}
+
+.option-display.correct {
+    border-color: var(--color-success);
+    background-color: rgba(var(--color-success-rgb), 0.1);
+}
+
+.option-display.user-selected {
+    border-width: 2px;
+}
+
+.option-display.user-selected.incorrect {
+    border-color: var(--color-error);
+    background-color: rgba(var(--color-error-rgb), 0.1);
+}
+
+.solution-explanation {
+    padding: var(--space-24);
+    border-top: 1px solid var(--color-border);
+}
+
+.solution-navigation {
+    padding: var(--space-16);
+    border-top: 1px solid var(--color-border);
+    background: var(--color-secondary);
+    display: flex;
+    justify-content: space-between;
+}
+
+.no-results, .no-results-card {
+    padding: var(--space-24);
+    text-align: center;
+    color: var(--color-text-secondary);
+}
+
+@media (max-width: 768px) {
+    .solution-content {
+        grid-template-columns: 1fr;
+    }
+    .question-navigation {
+        max-height: 200px;
+    }
+}
