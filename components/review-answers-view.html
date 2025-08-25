@@ -1,0 +1,59 @@
+<!-- Review Answers View Component -->
+<div id="review-answers-view" class="view">
+    <div class="container">
+        <div class="review-header">
+            <h2>Review Your Answers</h2>
+            <div class="review-nav">
+                <span class="question-number">Question <span id="review-q-num">1</span> of 50</span>
+                <button id="back-to-results-btn" class="btn btn--outline btn--sm">← Back to Results</button>
+            </div>
+        </div>
+
+        <div class="review-content">
+            <div class="question-review">
+                <div class="question-text" id="review-question-text">
+                    <!-- Question text -->
+                </div>
+
+                <div class="answer-comparison">
+                    <div class="user-answer">
+                        <h4>Your Answer:</h4>
+                        <div id="user-answer-display" class="answer-display">
+                            <!-- User's answer -->
+                        </div>
+                    </div>
+
+                    <div class="correct-answer">
+                        <h4>Correct Answer:</h4>
+                        <div id="correct-answer-display" class="answer-display">
+                            <!-- Correct answer -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="solution-section">
+                    <h4>Solution:</h4>
+                    <div id="solution-text" class="solution-content">
+                        <!-- Solution explanation -->
+                    </div>
+                </div>
+
+                <div class="question-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Time Spent:</span>
+                        <span id="question-time-spent" class="stat-value">00:00</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Status:</span>
+                        <span id="question-status-display" class="stat-value">Correct</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="review-navigation">
+                <button id="review-prev-btn" class="btn btn--secondary">← Previous</button>
+                <button id="review-next-btn" class="btn btn--primary">Next →</button>
+            </div>
+        </div>
+    </div>
+</div>

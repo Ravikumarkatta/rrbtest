@@ -1,0 +1,130 @@
+<!-- Enhanced Landing View Component -->
+<div id="landing-view" class="view active">
+    <div class="container">
+        <div class="landing-content">
+            <div class="brand-header">
+                <h1>RRB Mock Test</h1>
+                <h2>ALL MOCK TESTS IN ONE PLACE ONLY FOR ME </h2>
+                <div class="test-info">
+                    <span class="info-badge">Mixed Difficulty</span>
+                    <span class="info-badge">Complete Analysis BY TOPIC WISE</span>
+                </div>
+            </div>
+            
+            <div class="settings-panel">
+                <div class="settings-grid">
+                    <div class="setting-group">
+                        <label for="test-duration" class="setting-label">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12,6 12,12 16,14"></polyline>
+                            </svg>
+                            Test Duration
+                        </label>
+                        <select id="test-duration" class="form-control">
+                            <option value="60">60 minutes</option>
+                            <option value="90" selected>90 minutes (RRB Mode)</option>
+                            <option value="120">120 minutes</option>
+                            <option value="custom">Custom Duration</option>
+                        </select>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="question-timer" class="setting-label">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12,6 12,12 8,14"></polyline>
+                            </svg>
+                            Question Timer
+                        </label>
+                    </div>
+                </div>
+                
+                <div id="custom-duration-section" class="setting-group hidden">
+                    <label class="setting-label">Custom Duration:</label>
+                    <div class="custom-duration-inputs">
+                        <div class="time-input-group">
+                            <input type="number" id="custom-minutes" class="form-control time-input" 
+                                   min="1" max="300" placeholder="MM" value="90">
+                            <label for="custom-minutes" class="time-input-label">Minutes</label>
+                        </div>
+                        <div class="time-input-group">
+                            <input type="number" id="custom-seconds" class="form-control time-input" 
+                                   min="0" max="59" placeholder="SS" value="0">
+                            <label for="custom-seconds" class="time-input-label">Seconds</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="checkbox-grid">
+                    
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="dark-mode">
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">Dark Mode</span>
+                    </label>
+
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="enhanced-timer" checked>
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">Enhanced Timer with Alerts</span>
+                    </label>
+
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="question-grid-sidebar">
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">Question Grid Sidebar</span>
+                    </label>
+
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="negative-marking">
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">Negative Marking (-0.33 per incorrect)</span>
+                    </label>
+                </div>
+                
+                <div class="setting-group">
+                    <label for="question-source" class="setting-label">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14,2 14,8 20,8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10,9 9,9 8,9"></polyline>
+                        </svg>
+                        Question Source
+                    </label>
+                    <select id="question-source" class="form-control">
+                        <option value="default">Default Questions (50 questions)</option>
+                        <option value="json">Upload JSON/TXT File</option>
+                    </select>
+                </div>
+                
+                <div id="json-upload-section" class="setting-group hidden">
+                    <label for="json-file" class="setting-label">Upload Questions (JSON/TXT):</label>
+                    <div class="file-upload-area">
+                        <input type="file" id="json-file" accept=".json,.txt" class="file-input">
+                        <div class="file-upload-display">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7,10 12,15 17,10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            <span>Drop JSON/TXT file here or click to browse</span>
+                        </div>
+                    </div>
+                    <div id="json-status" class="json-status hidden"></div>
+                </div>
+            </div>
+
+            <div class="start-button-container">
+                <button id="start-test-btn" class="btn btn--primary btn--large">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="5,3 19,12 5,21"></polygon>
+                    </svg>
+                    Start Mock Test
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,63 @@
+{
+  "questions": [
+    {
+      "id": "units_001",
+      "text": "What is the SI unit for electric current?",
+      "type": "multiple_choice",
+      "options": ["Ampere", "Volt", "Ohm", "Watt"],
+      "correct_answer": "Ampere",
+      "points": 10,
+      "category": "SI Base Units",
+      "difficulty": "easy",
+      "time_limit": 30,
+      "solution": "The ampere (A) is the base unit of electric current in the International System of Units (SI)."
+    },
+    {
+      "id": "units_002",
+      "text": "The dimensional formula [ML²T⁻²] represents which physical quantity?",
+      "type": "multiple_choice",
+      "options": ["Force", "Energy", "Power", "Momentum"],
+      "correct_answer": "Energy",
+      "points": 15,
+      "category": "Dimensional Analysis",
+      "difficulty": "medium",
+      "time_limit": 45,
+      "solution": "Energy has dimensions [ML²T⁻²]. This can be derived from kinetic energy: KE = ½mv², where [M][LT⁻¹]² = [ML²T⁻²]."
+    },
+    {
+      "id": "units_003",
+      "text": "Is the statement 'Planck's constant has dimensions [ML²T⁻¹]' correct?",
+      "type": "true_false",
+      "correct_answer": "true",
+      "points": 10,
+      "category": "Physical Constants",
+      "difficulty": "medium",
+      "time_limit": 40,
+      "solution": "Yes, Planck's constant h has dimensions [ML²T⁻¹], which represents energy × time."
+    },
+    {
+      "id": "units_004",
+      "text": "Which of the following has the same dimensions as pressure?",
+      "type": "multiple_choice",
+      "options": ["Energy density", "Force per unit area", "Stress", "All of the above"],
+      "correct_answer": "All of the above",
+      "points": 20,
+      "category": "Derived Quantities",
+      "difficulty": "hard",
+      "time_limit": 60,
+      "solution": "Pressure has dimensions [ML⁻¹T⁻²]. Energy density (energy/volume), force per unit area, and stress all have the same dimensional formula."
+    },
+    {
+      "id": "units_005",
+      "text": "The unit 'Newton' is equivalent to:",
+      "type": "multiple_choice",
+      "options": ["kg⋅m⋅s⁻²", "kg⋅m²⋅s⁻²", "kg⋅m⋅s⁻¹", "kg⋅m²⋅s⁻³"],
+      "correct_answer": "kg⋅m⋅s⁻²",
+      "points": 10,
+      "category": "SI Derived Units",
+      "difficulty": "easy",
+      "time_limit": 35,
+      "solution": "Newton (N) = kg⋅m⋅s⁻², derived from F = ma where force equals mass times acceleration."
+    }
+  ]
+}

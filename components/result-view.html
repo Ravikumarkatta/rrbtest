@@ -1,0 +1,108 @@
+<!-- Result View Component -->
+<div id="result-view" class="view">
+    <div class="container">
+        <div class="result-header">
+            <h1>Test Completed!</h1>
+            <div class="score-display">
+                <div class="score-circle">
+                    <span id="score-percentage">0%</span>
+                    <span class="score-label">Score</span>
+                </div>
+                <div class="score-details">
+                    <div class="score-item">
+                        <span class="score-value" id="correct-answers">0</span>
+                        <span class="score-label">Correct</span>
+                    </div>
+                    <div class="score-item">
+                        <span class="score-value" id="total-time">00:00:00</span>
+                        <span class="score-label">Total Time</span>
+                    </div>
+                    <div class="score-item">
+                        <span class="score-value" id="avg-time">00:00</span>
+                        <span class="score-label">Avg/Question</span>
+                    </div>
+                    <div class="score-item" id="negative-marking-indicator" style="display: none;">
+                        <span class="score-value">-0.33</span>
+                        <span class="score-label">Per Incorrect</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="analysis-section">
+            <h2>Performance Analysis</h2>
+            
+            <div class="charts-container">
+                <div class="chart-wrapper">
+                    <h3>Topic-wise Accuracy</h3>
+                    <div class="chart-container" style="position: relative; height: 300px;">
+                        <canvas id="topic-chart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <h3>Difficulty-wise Performance</h3>
+                    <div class="chart-container" style="position: relative; height: 300px;">
+                        <canvas id="difficulty-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="analysis-details">
+                <div class="strengths-weaknesses">
+                    <div class="strengths">
+                        <h3>Strengths</h3>
+                        <div id="strengths-list" class="topic-list">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                    <div class="weaknesses">
+                        <h3>Weaknesses</h3>
+                        <div id="weaknesses-list" class="topic-list">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="study-recommendations">
+                    <h3>Top 5 Study Actions</h3>
+                    <ol id="study-actions" class="study-list">
+                        <!-- Populated by JavaScript -->
+                    </ol>
+                </div>
+            </div>
+
+            <div class="detailed-results">
+                <h3>Question-wise Analysis</h3>
+                <div class="results-filter-controls">
+                    <button id="filter-all" class="filter-btn filter-btn--active" data-filter="all">All</button>
+                    <button id="filter-correct" class="filter-btn" data-filter="correct">Correct</button>
+                    <button id="filter-incorrect" class="filter-btn" data-filter="incorrect">Incorrect</button>
+                    <button id="filter-answered" class="filter-btn" data-filter="answered">Answered</button>
+                    <button id="filter-unanswered" class="filter-btn" data-filter="unanswered">Unanswered</button>
+                </div>
+                <div class="results-table-container">
+                    <table id="results-table" class="results-table">
+                        <thead>
+                            <tr>
+                                <th>Q#</th>
+                                <th>Topic</th>
+                                <th>Difficulty</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="result-actions">
+                <button id="review-answers-btn" class="btn btn--primary">View Step-by-Step Solutions</button>
+                <button id="export-results-btn" class="btn btn--secondary">Export Results</button>
+                <button id="new-test-btn" class="btn btn--outline">Start New Test</button>
+            </div>
+        </div>
+    </div>
+</div>

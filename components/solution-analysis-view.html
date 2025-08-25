@@ -1,0 +1,147 @@
+<!-- Solution Analysis View Component -->
+<div id="solution-analysis-view" class="view">
+    <div class="container">
+        <div class="analysis-header">
+            <div class="header-left">
+                <button id="back-to-results-btn" class="btn btn--outline btn--sm">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5"></path>
+                        <path d="M12 19l-7-7 7-7"></path>
+                    </svg>
+                    Back to Results
+                </button>
+                <h2>Detailed Solution Analysis</h2>
+            </div>
+            <div class="header-right">
+                <span class="question-counter">Question <span id="solution-q-num">1</span> of 50</span>
+            </div>
+        </div>
+
+        <div class="analysis-controls">
+            <div class="filter-controls">
+                <h3>Filter Questions:</h3>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 6h18"></path>
+                            <path d="M3 12h18"></path>
+                            <path d="M3 18h18"></path>
+                        </svg>
+                        All Questions
+                    </button>
+                    <button class="filter-btn" data-filter="correct">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22,4 12,14.01 9,11.01"></polyline>
+                        </svg>
+                        Correct Answers
+                    </button>
+                    <button class="filter-btn" data-filter="incorrect">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                        </svg>
+                        Incorrect Answers
+                    </button>
+                    <button class="filter-btn" data-filter="unanswered">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        Unanswered
+                    </button>
+                </div>
+            </div>
+
+            <div class="topic-filter">
+                <label for="topic-filter-select">Filter by Topic:</label>
+                <select id="topic-filter-select" class="form-control">
+                    <option value="all">All Topics</option>
+                    <!-- Topics will be populated by JavaScript -->
+                </select>
+            </div>
+
+            <div class="difficulty-filter">
+                <label for="difficulty-filter-select">Filter by Difficulty:</label>
+                <select id="difficulty-filter-select" class="form-control">
+                    <option value="all">All Difficulties</option>
+                    <option value="Easy">Easy</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Hard">Hard</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="solution-content">
+            <div class="question-navigation">
+                <div class="question-list" id="filtered-question-list">
+                    <!-- Filtered question numbers will be populated here -->
+                </div>
+            </div>
+
+            <div class="solution-details">
+                <div class="question-card">
+                    <div class="question-header">
+                        <div class="question-meta">
+                            <span id="current-difficulty" class="status status--info">Easy</span>
+                            <span id="current-topic" class="topic-tag">Basic Dimensions</span>
+                            <span id="current-status" class="status status--success">Correct</span>
+                        </div>
+                        <div class="question-stats">
+                            <span class="stat-item">Time: <span id="current-time">00:45</span></span>
+                        </div>
+                    </div>
+
+                    <div class="question-text" id="current-question-text">
+                        <!-- Question text -->
+                    </div>
+
+                    <div class="answer-options" id="current-answer-options">
+                        <!-- Answer options with highlighting -->
+                    </div>
+
+                    <div class="solution-explanation">
+                        <h4>Detailed Solution:</h4>
+                        <div id="current-solution" class="solution-content">
+                            <!-- Solution explanation -->
+                        </div>
+                    </div>
+
+                    <div class="solution-navigation">
+                        <button id="prev-solution-btn" class="btn btn--secondary">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M15 18l-6-6 6-6"></path>
+                            </svg>
+                            Previous
+                        </button>
+                        <button id="jump-to-question-btn" class="btn btn--outline">Jump to Question</button>
+                        <button id="next-solution-btn" class="btn btn--primary">
+                            Next
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 18l6-6-6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Jump to Question Modal -->
+<div id="jump-to-question-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Jump to Question</h3>
+            <button class="modal-close">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="question-grid-jump" id="jump-question-grid">
+                <!-- Question grid for jumping -->
+            </div>
+        </div>
+    </div>
+</div>

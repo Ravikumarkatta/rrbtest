@@ -1,0 +1,25 @@
+<!-- Review Panel Modal Component -->
+<div id="review-panel" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Review Your Answers</h3>
+            <button class="modal-close" aria-label="Close review panel">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="review-legend">
+                <div class="legend-item"><div class="legend-color answered"></div> Answered</div>
+                <div class="legend-item"><div class="legend-color unanswered"></div> Unanswered</div>
+                <div class="legend-item"><div class="legend-color bookmarked"></div> Bookmarked</div>
+                <div class="legend-item"><div class="legend-color bookmarked-unanswered"></div> Bookmarked (Unanswered)</div>
+            </div>
+            <div class="review-grid" id="review-grid">
+                <!-- Grid items will be populated by JavaScript -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="close-review-btn" class="btn btn--outline">Continue Test</button>
+            <button id="submit-from-review-btn" class="btn btn--primary">Submit Test</button>
+        </div>
+    </div>
+</div>
