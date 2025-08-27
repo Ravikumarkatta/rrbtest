@@ -1069,7 +1069,9 @@ class TestManager {
         totalTime: state.testEnd - state.testStart,
         questionResults: [],
         topicStats: {},
-        difficultyStats: {}
+        difficultyStats: {},
+        // Store the exact questions used during the test to maintain consistency in solution analysis
+        testedQuestions: currentQuestions
       };
       
       // Calculate score and detailed results
@@ -1785,7 +1787,10 @@ class TestManager {
       if (!this.isValid()) return;
       try {
           const questionResult = this.filteredSolutionQuestions[this.currentSolutionIndex];
-          const allQuestions = this.getCurrentQuestions();
+          
+          // Use tested questions from results to maintain consistency and prevent reset to default questions
+          const results = this.stateManager.getResults();
+          const allQuestions = results?.testedQuestions || this.getCurrentQuestions();
 
           // Update counter
           this.viewManager.updateElement('solution-q-num', `${this.currentSolutionIndex + 1} of ${this.filteredSolutionQuestions.length}`);
