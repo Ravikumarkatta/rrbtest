@@ -610,22 +610,17 @@ class MockTestApp {
   // Jump directly to a specific question in review view
   jumpToQuestion(questionNumber) {
     try {
-      const currentQuestions = this.getCurrentQuestions();
-      // Convert 1-indexed question number to 0-indexed array position
-      const questionIndex = questionNumber - 1;
+      // Switch to detailed solution analysis view instead of review answers
+      this.viewManager.showView('solution-analysis');
       
-      if (questionIndex >= 0 && questionIndex < currentQuestions.length) {
-        // Initialize review if not already done
-        this.testManager.initializeReview();
-        
-        // Switch to review answers view
-        this.viewManager.showView('review-answers');
-        
-        // Set the current review question and update display
-        this.stateManager.updateState({ reviewCurrentQ: questionIndex });
-        this.updateReviewDisplay(questionIndex);
+      // Navigate to the specific question in solution analysis
+      // This will find the question in the filtered list and set it as active
+      if (this.testManager && typeof this.testManager.navigateToSolutionQuestion === 'function') {
+        this.testManager.navigateToSolutionQuestion(questionNumber);
       } else {
-        console.error('Invalid question number:', questionNumber);
+        console.warn('navigateToSolutionQuestion method not available, using fallback');
+        // Fallback: initialize solution analysis and try to find the question
+        this.testManager.applySolutionFilters();
       }
     } catch (error) {
       console.error('Jump to question error:', error);

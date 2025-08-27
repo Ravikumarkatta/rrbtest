@@ -1987,6 +1987,88 @@ class TestManager {
           }
       }
   }
+
+  // Navigate to a specific question in solution analysis view
+  // Used when clicking question number links from question-wise analysis table
+  navigateToSolutionQuestion(questionNumber) {
+    try {
+      // First apply filters to populate the filtered question list
+      this.applySolutionFilters();
+      
+      // Find the question in the filtered results
+      const questionIndex = this.filteredSolutionQuestions.findIndex(
+        q => q.questionId === questionNumber
+      );
+      
+      if (questionIndex !== -1) {
+        // Set the current index to the found question
+        this.currentSolutionIndex = questionIndex;
+        
+        // Display the question and update the UI
+        this.displaySolutionForQuestion();
+        
+        // Update the active highlight in the question list
+        const listContainer = document.getElementById('filtered-question-list');
+        if (listContainer) {
+          // Remove active class from all items
+          listContainer.querySelectorAll('.question-list-item').forEach(el => 
+            el.classList.remove('active')
+          );
+          
+          // Add active class to the target question and scroll it into view
+          const activeItem = listContainer.querySelector(`[data-index="${questionIndex}"]`);
+          if (activeItem) {
+            activeItem.classList.add('active');
+            activeItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+        
+        console.log(`Successfully navigated to question ${questionNumber} in solution analysis`);
+      } else {
+        console.warn(`Question ${questionNumber} not found in current filter. Showing first question.`);
+        // If question not found in current filter, reset to show all questions
+        this.resetSolutionFilters();
+        // Try again after resetting filters
+        const retryIndex = this.filteredSolutionQuestions.findIndex(
+          q => q.questionId === questionNumber
+        );
+        if (retryIndex !== -1) {
+          this.currentSolutionIndex = retryIndex;
+          this.displaySolutionForQuestion();
+        }
+      }
+    } catch (error) {
+      console.error('Error navigating to solution question:', error);
+      // Fallback: just apply filters and show first question
+      this.applySolutionFilters();
+    }
+  }
+  
+  // Helper method to reset solution analysis filters to show all questions
+  resetSolutionFilters() {
+    try {
+      // Reset filter buttons to "All Questions"
+      const filterButtons = document.querySelectorAll('#solution-analysis-view .filter-btn');
+      filterButtons.forEach(btn => {
+        if (btn.dataset.filter === 'all') {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+      
+      // Reset topic and difficulty selects
+      const topicSelect = document.getElementById('topic-filter-select');
+      const difficultySelect = document.getElementById('difficulty-filter-select');
+      if (topicSelect) topicSelect.value = 'all';
+      if (difficultySelect) difficultySelect.value = 'all';
+      
+      // Reapply filters with reset values
+      this.applySolutionFilters();
+    } catch (error) {
+      console.error('Error resetting solution filters:', error);
+    }
+  }
   
   showJumpToQuestionModal() {
       console.log("Jump to question modal not implemented yet.");
