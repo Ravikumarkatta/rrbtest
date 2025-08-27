@@ -1261,6 +1261,79 @@ class TestManager {
     }
   }
 
+  // Display comprehensive question tracking statistics
+  displayQuestionTrackingStats() {
+    try {
+      const stats = this.getQuestionTrackingStats();
+      if (!stats) {
+        console.warn('No question tracking stats available');
+        return;
+      }
+
+      // Show the stats section
+      const statsSection = document.getElementById('question-tracking-stats');
+      if (statsSection) {
+        statsSection.style.display = 'block';
+      }
+
+      // Update stat cards with counts and percentages
+      this.viewManager.updateElement('total-questions-stat', stats.total);
+      this.viewManager.updateElement('answered-questions-stat', stats.answered);
+      this.viewManager.updateElement('correct-questions-stat', stats.correct);
+      this.viewManager.updateElement('incorrect-questions-stat', stats.incorrect);
+      this.viewManager.updateElement('unanswered-questions-stat', stats.unanswered);
+
+      // Update percentages
+      this.viewManager.updateElement('answered-percentage', `${stats.answeredPercentage}%`);
+      this.viewManager.updateElement('correct-percentage', `${stats.correctPercentage}%`);
+      this.viewManager.updateElement('incorrect-percentage', `${stats.incorrectPercentage}%`);
+      this.viewManager.updateElement('unanswered-percentage', `${stats.unansweredPercentage}%`);
+
+      // Update progress bars
+      this.updateProgressBar('answered-progress-bar', stats.answeredPercentage);
+      this.updateProgressBar('correct-progress-bar', stats.correctPercentage);
+      this.updateProgressBar('incorrect-progress-bar', stats.incorrectPercentage);
+      this.updateProgressBar('unanswered-progress-bar', stats.unansweredPercentage);
+
+      // Update performance metrics
+      this.viewManager.updateElement('overall-accuracy', `${stats.accuracyPercentage}%`);
+      this.viewManager.updateElement('completion-rate', `${stats.answeredPercentage}%`);
+
+      // Calculate and display score breakdown
+      const positiveScore = stats.correct * 1; // +1 for each correct
+      const negativeScore = stats.incorrect * -0.33; // -0.33 for each incorrect (if negative marking)
+      const state = this.stateManager.getState();
+      
+      this.viewManager.updateElement('positive-score', `+${positiveScore}`);
+      if (state.negativeMarking) {
+        this.viewManager.updateElement('negative-score', negativeScore.toFixed(2));
+      } else {
+        this.viewManager.updateElement('negative-score', '0');
+      }
+      this.viewManager.updateElement('final-score', stats.totalScore.toFixed(2));
+
+      // Calculate and display time efficiency
+      const results = this.stateManager.getResults();
+      if (results && results.totalTime && stats.answered > 0) {
+        const avgTimePerAnswered = Math.round(results.totalTime / stats.answered);
+        this.viewManager.updateElement('time-efficiency', this.formatTime(avgTimePerAnswered));
+      } else {
+        this.viewManager.updateElement('time-efficiency', 'N/A');
+      }
+      
+    } catch (error) {
+      console.error('Error displaying question tracking stats:', error);
+    }
+  }
+
+  // Helper method to update progress bars
+  updateProgressBar(elementId, percentage) {
+    const progressBar = document.getElementById(elementId);
+    if (progressBar) {
+      progressBar.style.width = `${percentage}%`;
+    }
+  }
+
   // Display test results (unchanged)
   displayResults() {
     if (!this.isValid()) return;
@@ -1301,6 +1374,9 @@ class TestManager {
       
       // Display analysis
       this.displayAnalysis(results);
+      
+      // Display comprehensive question tracking statistics
+      this.displayQuestionTrackingStats();
       
       // Populate results table
       this.populateResultsTable(results.questionResults);

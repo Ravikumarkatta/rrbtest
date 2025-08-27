@@ -2470,3 +2470,261 @@ input[type="file"].form-control:focus {
         max-height: 200px;
     }
 }
+
+/* ================================
+   Question Tracking Statistics Styles
+   ================================ */
+
+/* Question Tracking Stats Container */
+.question-tracking-stats {
+  margin-bottom: var(--space-32);
+  padding: var(--space-24);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-card-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.question-tracking-stats h3 {
+  text-align: center;
+  margin-bottom: var(--space-24);
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Stats Cards Container */
+.stats-cards-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-16);
+  margin-bottom: var(--space-32);
+}
+
+/* Individual Stat Card */
+.stat-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-16);
+  text-align: center;
+  position: relative;
+  transition: all var(--duration-normal) var(--ease-standard);
+  box-shadow: var(--shadow-xs);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.stat-card .stat-value {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  margin-bottom: var(--space-4);
+  color: var(--color-text);
+}
+
+.stat-card .stat-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+  margin-bottom: var(--space-8);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-card .stat-percentage {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--space-8);
+  color: var(--color-primary);
+}
+
+/* Progress Bar for Stats */
+.stat-progress {
+  width: 100%;
+  height: 6px;
+  background-color: var(--color-secondary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.stat-progress .progress-bar {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.8s ease-out;
+  background-color: var(--color-primary);
+}
+
+/* Color-coded stat cards */
+.stat-card--answered {
+  border-color: rgba(var(--color-teal-500-rgb), 0.3);
+}
+
+.stat-card--answered .stat-value {
+  color: var(--color-teal-500);
+}
+
+.stat-card--answered .progress-bar--answered {
+  background: linear-gradient(90deg, var(--color-teal-400), var(--color-teal-600));
+}
+
+.stat-card--correct {
+  border-color: rgba(var(--color-success-rgb), 0.3);
+}
+
+.stat-card--correct .stat-value {
+  color: var(--color-success);
+}
+
+.stat-card--correct .progress-bar--correct {
+  background: linear-gradient(90deg, var(--color-success), #059669);
+}
+
+.stat-card--incorrect {
+  border-color: rgba(var(--color-error-rgb), 0.3);
+}
+
+.stat-card--incorrect .stat-value {
+  color: var(--color-error);
+}
+
+.stat-card--incorrect .progress-bar--incorrect {
+  background: linear-gradient(90deg, var(--color-error), #dc2626);
+}
+
+.stat-card--unanswered {
+  border-color: rgba(var(--color-warning-rgb), 0.3);
+}
+
+.stat-card--unanswered .stat-value {
+  color: var(--color-warning);
+}
+
+.stat-card--unanswered .progress-bar--unanswered {
+  background: linear-gradient(90deg, var(--color-warning), #d97706);
+}
+
+/* Performance Metrics Container */
+.performance-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-16);
+}
+
+/* Individual Metric Card */
+.metric-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-20);
+  transition: all var(--duration-normal) var(--ease-standard);
+  box-shadow: var(--shadow-xs);
+}
+
+.metric-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.metric-header {
+  margin-bottom: var(--space-12);
+}
+
+.metric-header h4 {
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  margin: 0;
+}
+
+.metric-content {
+  text-align: center;
+}
+
+.metric-value {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+  margin-bottom: var(--space-4);
+  line-height: 1;
+}
+
+.metric-description {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Score Breakdown Styles */
+.score-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.score-breakdown .score-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-6) var(--space-8);
+  background: var(--color-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.score-breakdown .score-type {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.score-breakdown .score-value {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  font-family: var(--font-family-mono);
+}
+
+/* Responsive Design for Stats */
+@media (max-width: 768px) {
+  .stats-cards-container {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--space-12);
+  }
+  
+  .stat-card {
+    padding: var(--space-12);
+  }
+  
+  .stat-card .stat-value {
+    font-size: var(--font-size-2xl);
+  }
+  
+  .performance-metrics {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--space-12);
+  }
+  
+  .metric-card {
+    padding: var(--space-16);
+  }
+  
+  .metric-value {
+    font-size: var(--font-size-xl);
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-cards-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .performance-metrics {
+    grid-template-columns: 1fr;
+  }
+  
+  .question-tracking-stats {
+    padding: var(--space-16);
+  }
+}
