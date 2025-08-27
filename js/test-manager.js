@@ -1049,7 +1049,7 @@ class TestManager {
     }
   }
 
-  // Calculate test results (unchanged)
+  // Calculate test results with enhanced question tracking
   calculateResults() {
     if (!this.isValid()) return;
     
@@ -1063,6 +1063,12 @@ class TestManager {
       const state = this.stateManager.getState();
       const totalQuestions = currentQuestions.length;
       
+      // Initialize result tracking counters
+      let answeredQuestions = 0;
+      let correctAnswers = 0;
+      let incorrectAnswers = 0;
+      let unansweredQuestions = 0;
+      
       const results = {
         score: 0,
         totalQuestions: totalQuestions,
@@ -1071,25 +1077,52 @@ class TestManager {
         topicStats: {},
         difficultyStats: {},
         // Store the exact questions used during the test to maintain consistency in solution analysis
-        testedQuestions: currentQuestions
+        testedQuestions: currentQuestions,
+        // Enhanced question tracking counters
+        questionCounts: {
+          total: totalQuestions,
+          answered: 0,        // Will be updated below
+          correct: 0,         // Will be updated below
+          incorrect: 0,       // Will be updated below
+          unanswered: 0       // Will be updated below
+        }
       };
       
-      // Calculate score and detailed results
+      // Calculate score and detailed results with comprehensive tracking
       for (let i = 0; i < totalQuestions; i++) {
         const question = currentQuestions[i];
         const userAnswer = state.answers[i];
-        const isCorrect = userAnswer !== null && userAnswer !== undefined && userAnswer === question.correctIndex;
-        const isIncorrect = userAnswer !== null && userAnswer !== undefined && !isCorrect;
+        const isAnswered = userAnswer !== null && userAnswer !== undefined;
+        const isCorrect = isAnswered && userAnswer === question.correctIndex;
+        const isIncorrect = isAnswered && !isCorrect;
         const timeSpent = state.timeSpent[i] || 0;
         
-        // Apply scoring based on negative marking setting
+        // Update question tracking counters
+        if (isAnswered) {
+          answeredQuestions++;
+          if (isCorrect) {
+            correctAnswers++;
+          } else {
+            incorrectAnswers++;
+          }
+        } else {
+          unansweredQuestions++;
+        }
+        
+        // Calculate score with negative marking
+        // Scoring rules:
+        // - Correct answer: +1 point
+        // - Incorrect answer: -0.33 points (if negative marking enabled)
+        // - Unanswered: 0 points (no penalty)
         if (isCorrect) {
           results.score += 1;
         } else if (isIncorrect && state.negativeMarking) {
+          // Apply negative marking: subtract 1/3 point for incorrect answers
           results.score -= 0.33;
         }
-        // No score change for unanswered questions
+        // No score change for unanswered questions (neutral)
         
+        // Store detailed question result with clear status tracking
         results.questionResults.push({
           questionId: i + 1,
           question: question.question,
@@ -1098,34 +1131,133 @@ class TestManager {
           userAnswer: userAnswer,
           correctAnswer: question.correctIndex,
           isCorrect: isCorrect,
+          isAnswered: isAnswered,
           timeSpent: timeSpent,
-          status: userAnswer === null || userAnswer === undefined ? 'unanswered' : (isCorrect ? 'correct' : 'incorrect')
+          status: !isAnswered ? 'unanswered' : (isCorrect ? 'correct' : 'incorrect'),
+          // Score contribution for this question
+          scoreContribution: isCorrect ? 1 : (isIncorrect && state.negativeMarking ? -0.33 : 0)
         });
         
-        // Topic stats
+        // Topic-wise statistics tracking
         if (!results.topicStats[question.topic]) {
-          results.topicStats[question.topic] = { attempted: 0, correct: 0, timeTotal: 0 };
+          results.topicStats[question.topic] = { 
+            total: 0, 
+            attempted: 0, 
+            correct: 0, 
+            incorrect: 0,
+            unanswered: 0,
+            timeTotal: 0 
+          };
         }
-        if (userAnswer !== null && userAnswer !== undefined) {
+        results.topicStats[question.topic].total++;
+        if (isAnswered) {
           results.topicStats[question.topic].attempted++;
-          if (isCorrect) results.topicStats[question.topic].correct++;
+          if (isCorrect) {
+            results.topicStats[question.topic].correct++;
+          } else {
+            results.topicStats[question.topic].incorrect++;
+          }
+        } else {
+          results.topicStats[question.topic].unanswered++;
         }
         results.topicStats[question.topic].timeTotal += timeSpent;
         
-        // Difficulty stats
+        // Difficulty-wise statistics tracking
         if (!results.difficultyStats[question.difficulty]) {
-          results.difficultyStats[question.difficulty] = { attempted: 0, correct: 0, timeTotal: 0 };
+          results.difficultyStats[question.difficulty] = { 
+            total: 0,
+            attempted: 0, 
+            correct: 0, 
+            incorrect: 0,
+            unanswered: 0,
+            timeTotal: 0 
+          };
         }
-        if (userAnswer !== null && userAnswer !== undefined) {
+        results.difficultyStats[question.difficulty].total++;
+        if (isAnswered) {
           results.difficultyStats[question.difficulty].attempted++;
-          if (isCorrect) results.difficultyStats[question.difficulty].correct++;
+          if (isCorrect) {
+            results.difficultyStats[question.difficulty].correct++;
+          } else {
+            results.difficultyStats[question.difficulty].incorrect++;
+          }
+        } else {
+          results.difficultyStats[question.difficulty].unanswered++;
         }
         results.difficultyStats[question.difficulty].timeTotal += timeSpent;
       }
       
+      // Update final question tracking counters in results
+      results.questionCounts.answered = answeredQuestions;
+      results.questionCounts.correct = correctAnswers;
+      results.questionCounts.incorrect = incorrectAnswers;
+      results.questionCounts.unanswered = unansweredQuestions;
+      
+      // Validation: Ensure counts add up correctly
+      const totalCheck = results.questionCounts.correct + results.questionCounts.incorrect + results.questionCounts.unanswered;
+      if (totalCheck !== results.questionCounts.total) {
+        console.warn('Question count validation failed:', {
+          calculated: totalCheck,
+          expected: results.questionCounts.total,
+          breakdown: results.questionCounts
+        });
+      }
+      
       this.stateManager.setResults(results);
+      
+      // Log comprehensive result summary for debugging and validation
+      console.log('Test Results Calculated:', {
+        score: results.score,
+        totalQuestions: results.questionCounts.total,
+        answered: results.questionCounts.answered,
+        correct: results.questionCounts.correct,
+        incorrect: results.questionCounts.incorrect,
+        unanswered: results.questionCounts.unanswered,
+        negativeMarkingEnabled: state.negativeMarking
+      });
     } catch (error) {
       console.error('Calculate results error:', error);
+    }
+  }
+
+  // Helper method to get question tracking statistics
+  getQuestionTrackingStats() {
+    if (!this.isValid()) return null;
+    
+    try {
+      const results = this.stateManager.getResults();
+      if (!results || !results.questionCounts) {
+        return null;
+      }
+      
+      const stats = results.questionCounts;
+      const percentage = (count, total) => total > 0 ? Math.round((count / total) * 100) : 0;
+      
+      return {
+        // Raw counts
+        total: stats.total,
+        answered: stats.answered,
+        correct: stats.correct,
+        incorrect: stats.incorrect,
+        unanswered: stats.unanswered,
+        
+        // Percentages for easier display
+        answeredPercentage: percentage(stats.answered, stats.total),
+        correctPercentage: percentage(stats.correct, stats.total),
+        incorrectPercentage: percentage(stats.incorrect, stats.total),
+        unansweredPercentage: percentage(stats.unanswered, stats.total),
+        
+        // Accuracy among answered questions
+        accuracyPercentage: stats.answered > 0 ? percentage(stats.correct, stats.answered) : 0,
+        
+        // Score information
+        totalScore: results.score,
+        maxPossibleScore: stats.total,
+        scorePercentage: percentage(Math.max(0, results.score), stats.total)
+      };
+    } catch (error) {
+      console.error('Error getting question tracking stats:', error);
+      return null;
     }
   }
 
