@@ -1152,6 +1152,14 @@ class MockTestApp {
               </svg>
               Rename
             </button>
+            <button class="file-action-btn download-btn" onclick="window.downloadTestFile('${file.id}', '${file.file_name}')" title="Download this file as JSON backup">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7,10 12,15 17,10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Download
+            </button>
             <button class="file-action-btn delete-btn" onclick="window.deleteTestFile('${file.id}')" title="Delete this file">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3,6 5,6 21,6"></polyline>
@@ -1343,9 +1351,24 @@ window.loadTestFile = async function(id) {
     const api = new window.MockTestAPI();
     const fileData = await api.fetchTestFile(id);
     
+    // Validate file data
+    if (!fileData || !fileData.file_json) {
+      throw new Error('Invalid file data received from server');
+    }
+
     // Parse and load questions using enhanced question manager
     const manager = new EnhancedQuestionManager();
-    const questions = manager.parseQuestions(fileData.file_json);
+    let questions;
+    
+    try {
+      questions = manager.parseQuestions(fileData.file_json);
+    } catch (parseError) {
+      throw new Error(`Failed to parse test file: ${parseError.message}`);
+    }
+    
+    if (!questions || questions.length === 0) {
+      throw new Error('No valid questions found in the test file');
+    }
     
     // Load into app
     if (window.app && window.app.stateManager) {
@@ -1370,6 +1393,8 @@ window.loadTestFile = async function(id) {
       if (window.app.switchTab) {
         window.app.switchTab('upload');
       }
+    } else {
+      throw new Error('Application not properly initialized');
     }
     
   } catch (error) {
@@ -1378,17 +1403,55 @@ window.loadTestFile = async function(id) {
     if (statusElement) {
       statusElement.classList.remove('loading');
       statusElement.classList.add('error');
-      statusElement.innerHTML = `<div class="status-message error">❌ Failed to load test file: ${error.message}</div>`;
+      let errorMessage = 'Failed to load test file';
+      
+      // Provide more specific error messages
+      if (error.message.includes('fetch')) {
+        errorMessage = 'Cannot connect to server. Please check your connection and try again.';
+      } else if (error.message.includes('404')) {
+        errorMessage = 'Test file not found. It may have been deleted.';
+      } else if (error.message.includes('403')) {
+        errorMessage = 'You do not have permission to access this file.';
+      } else if (error.message.includes('parse') || error.message.includes('Invalid file data')) {
+        errorMessage = 'Test file is corrupted or in an invalid format.';
+      } else if (error.message.includes('No valid questions')) {
+        errorMessage = 'This test file does not contain any valid questions.';
+      } else {
+        errorMessage = `Failed to load test file: ${error.message}`;
+      }
+      
+      statusElement.innerHTML = `<div class="status-message error">❌ ${errorMessage}</div>`;
     }
   }
 };
 
 window.deleteTestFile = async function(id) {
-  if (!confirm('Are you sure you want to delete this test file? This action cannot be undone.')) {
+  // Get file info for better confirmation dialog
+  let fileName = 'this test file';
+  try {
+    const api = new window.MockTestAPI();
+    const fileData = await api.fetchTestFile(id);
+    fileName = `"${fileData.file_name}"`;
+  } catch (error) {
+    // Continue with generic name if we can't fetch file info
+    console.warn('Could not fetch file details for confirmation:', error);
+  }
+  
+  if (!confirm(`Are you sure you want to delete ${fileName}? This action cannot be undone.`)) {
     return;
   }
   
   try {
+    const statusElement = document.getElementById('json-status');
+    if (statusElement) {
+      statusElement.classList.remove('hidden', 'error');
+      statusElement.classList.add('loading');
+      statusElement.innerHTML = `<div class="loading-message">
+        <div class="loading-spinner"></div>
+        <span>Deleting ${fileName}...</span>
+      </div>`;
+    }
+
     const api = new window.MockTestAPI();
     await api.deleteTestFile(id);
     
@@ -1398,9 +1461,8 @@ window.deleteTestFile = async function(id) {
     }
     
     // Show success message
-    const statusElement = document.getElementById('json-status');
     if (statusElement) {
-      statusElement.classList.remove('hidden', 'error', 'loading');
+      statusElement.classList.remove('loading');
       statusElement.classList.add('success');
       statusElement.innerHTML = `<div class="status-message success">✅ Test file deleted successfully</div>`;
       
@@ -1414,22 +1476,63 @@ window.deleteTestFile = async function(id) {
     console.error('Failed to delete test file:', error);
     const statusElement = document.getElementById('json-status');
     if (statusElement) {
-      statusElement.classList.remove('hidden', 'loading');
+      statusElement.classList.remove('loading');
       statusElement.classList.add('error');
-      statusElement.innerHTML = `<div class="status-message error">❌ Failed to delete test file: ${error.message}</div>`;
+      let errorMessage = 'Failed to delete test file';
+      
+      // Provide more specific error messages
+      if (error.message.includes('fetch')) {
+        errorMessage = 'Cannot connect to server. Please check your connection and try again.';
+      } else if (error.message.includes('404')) {
+        errorMessage = 'Test file not found. It may have already been deleted.';
+      } else if (error.message.includes('403')) {
+        errorMessage = 'You do not have permission to delete this file.';
+      } else {
+        errorMessage = `Failed to delete test file: ${error.message}`;
+      }
+      
+      statusElement.innerHTML = `<div class="status-message error">❌ ${errorMessage}</div>`;
     }
   }
 };
 
 window.renameTestFile = async function(id, currentName) {
   const newName = prompt('Enter new name for the test file:', currentName);
-  if (!newName || newName === currentName) {
+  if (!newName || newName.trim() === '' || newName === currentName) {
+    return;
+  }
+  
+  // Basic validation
+  const trimmedName = newName.trim();
+  if (trimmedName.length < 1) {
+    alert('File name cannot be empty.');
+    return;
+  }
+  if (trimmedName.length > 255) {
+    alert('File name is too long. Please use a shorter name.');
+    return;
+  }
+  
+  // Check for invalid characters (basic check)
+  const invalidChars = /[<>:"/\\|?*]/;
+  if (invalidChars.test(trimmedName)) {
+    alert('File name contains invalid characters. Please avoid: < > : " / \\ | ? *');
     return;
   }
   
   try {
+    const statusElement = document.getElementById('json-status');
+    if (statusElement) {
+      statusElement.classList.remove('hidden', 'error');
+      statusElement.classList.add('loading');
+      statusElement.innerHTML = `<div class="loading-message">
+        <div class="loading-spinner"></div>
+        <span>Renaming "${currentName}" to "${trimmedName}"...</span>
+      </div>`;
+    }
+
     const api = new window.MockTestAPI();
-    await api.renameTestFile(id, newName);
+    await api.renameTestFile(id, trimmedName);
     
     // Refresh the file list
     if (window.app && window.app.refreshFileList) {
@@ -1437,11 +1540,10 @@ window.renameTestFile = async function(id, currentName) {
     }
     
     // Show success message
-    const statusElement = document.getElementById('json-status');
     if (statusElement) {
-      statusElement.classList.remove('hidden', 'error', 'loading');
+      statusElement.classList.remove('loading');
       statusElement.classList.add('success');
-      statusElement.innerHTML = `<div class="status-message success">✅ Test file renamed to "${newName}"</div>`;
+      statusElement.innerHTML = `<div class="status-message success">✅ Test file renamed to "${trimmedName}"</div>`;
       
       // Hide message after 3 seconds
       setTimeout(() => {
@@ -1453,9 +1555,116 @@ window.renameTestFile = async function(id, currentName) {
     console.error('Failed to rename test file:', error);
     const statusElement = document.getElementById('json-status');
     if (statusElement) {
-      statusElement.classList.remove('hidden', 'loading');
+      statusElement.classList.remove('loading');
       statusElement.classList.add('error');
-      statusElement.innerHTML = `<div class="status-message error">❌ Failed to rename test file: ${error.message}</div>`;
+      let errorMessage = 'Failed to rename test file';
+      
+      // Provide more specific error messages
+      if (error.message.includes('fetch')) {
+        errorMessage = 'Cannot connect to server. Please check your connection and try again.';
+      } else if (error.message.includes('404')) {
+        errorMessage = 'Test file not found. It may have been deleted.';
+      } else if (error.message.includes('403')) {
+        errorMessage = 'You do not have permission to rename this file.';
+      } else if (error.message.includes('duplicate') || error.message.includes('exists')) {
+        errorMessage = 'A file with this name already exists. Please choose a different name.';
+      } else {
+        errorMessage = `Failed to rename test file: ${error.message}`;
+      }
+      
+      statusElement.innerHTML = `<div class="status-message error">❌ ${errorMessage}</div>`;
+    }
+  }
+};
+
+window.downloadTestFile = async function(id, fileName) {
+  try {
+    const statusElement = document.getElementById('json-status');
+    if (statusElement) {
+      statusElement.classList.remove('hidden', 'error');
+      statusElement.classList.add('loading');
+      statusElement.innerHTML = `<div class="loading-message">
+        <div class="loading-spinner"></div>
+        <span>Downloading "${fileName}"...</span>
+      </div>`;
+    }
+
+    const api = new window.MockTestAPI();
+    const fileData = await api.fetchTestFile(id);
+    
+    // Validate file data
+    if (!fileData || !fileData.file_json) {
+      throw new Error('Invalid file data received from server');
+    }
+    
+    // Create download with proper filename
+    let downloadFileName = fileName;
+    if (!downloadFileName.toLowerCase().endsWith('.json')) {
+      downloadFileName = `${downloadFileName}.json`;
+    }
+    
+    // Create well-formatted JSON content
+    const jsonContent = JSON.stringify(fileData.file_json, null, 2);
+    
+    // Validate JSON before download
+    try {
+      JSON.parse(jsonContent);
+    } catch (jsonError) {
+      throw new Error('File contains invalid JSON data');
+    }
+    
+    // Create blob and download
+    const blob = new Blob([jsonContent], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    // Create temporary download link
+    const downloadLink = document.createElement('a');
+    downloadLink.href = url;
+    downloadLink.download = downloadFileName;
+    downloadLink.style.display = 'none';
+    
+    // Trigger download
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    
+    // Clean up blob URL
+    URL.revokeObjectURL(url);
+    
+    // Show success message
+    if (statusElement) {
+      statusElement.classList.remove('loading');
+      statusElement.classList.add('success');
+      statusElement.innerHTML = `<div class="status-message success">✅ Downloaded "${downloadFileName}" successfully</div>`;
+      
+      // Hide message after 3 seconds
+      setTimeout(() => {
+        statusElement.classList.add('hidden');
+      }, 3000);
+    }
+    
+  } catch (error) {
+    console.error('Failed to download test file:', error);
+    const statusElement = document.getElementById('json-status');
+    if (statusElement) {
+      statusElement.classList.remove('loading');
+      statusElement.classList.add('error');
+      let errorMessage = 'Failed to download test file';
+      
+      // Provide more specific error messages
+      if (error.message.includes('fetch')) {
+        errorMessage = 'Cannot connect to server. Please check your connection and try again.';
+      } else if (error.message.includes('404')) {
+        errorMessage = 'Test file not found. It may have been deleted.';
+      } else if (error.message.includes('403')) {
+        errorMessage = 'You do not have permission to access this file.';
+      } else if (error.message.includes('Invalid file data') || error.message.includes('invalid JSON')) {
+        errorMessage = 'Test file is corrupted or in an invalid format.';
+      } else {
+        errorMessage = `Failed to download test file: ${error.message}`;
+      }
+      
+      statusElement.innerHTML = `<div class="status-message error">❌ ${errorMessage}</div>`;
     }
   }
 };

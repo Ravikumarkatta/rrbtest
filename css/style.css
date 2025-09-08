@@ -2950,6 +2950,16 @@ input[type="file"].form-control:focus {
   background: #dc2626;
 }
 
+.file-action-btn.download-btn {
+  background: #0ea5e9;
+  color: white;
+  border: none;
+}
+
+.file-action-btn.download-btn:hover {
+  background: #0284c7;
+}
+
 /* Loading States */
 .loading-message {
   display: flex;
