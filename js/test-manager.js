@@ -1027,8 +1027,8 @@ class TestManager {
     }
   }
 
-  // Submit test (unchanged)
-  submitTest() {
+  // Submit test and save results to database
+  async submitTest() {
     if (!this.isValid()) return;
     
     if (!confirm('Are you sure you want to submit your test? You cannot change your answers after submission.')) {
@@ -1041,11 +1041,99 @@ class TestManager {
       this.clearAutoSave();
       
       this.calculateResults();
+      
+      // Save results to database if file ID is available
+      await this.saveTestResults();
+      
       this.displayResults();
       this.viewManager.showView('result');
     } catch (error) {
       console.error('Submit test error:', error);
       alert('Failed to submit test. Please try again.');
+    }
+  }
+
+  // Save test results to database
+  async saveTestResults() {
+    if (!this.isValid()) return;
+    
+    try {
+      const state = this.stateManager.getState();
+      const results = this.stateManager.getResults();
+      
+      // Only save if we have a file ID (test from database)
+      if (!state.currentFileId || !results) {
+        console.log('No file ID or results found, skipping database save');
+        return;
+      }
+
+      // Check if API is available
+      if (!window.MockTestAPI) {
+        console.warn('MockTestAPI not available, skipping result save');
+        return;
+      }
+
+      // Prepare result data for database
+      const api = new window.MockTestAPI();
+      const fileData = state.currentFileData || {};
+      
+      const subject = fileData.section || 'Unknown Subject';
+      const chapter = fileData.instructions?.category_distribution 
+        ? Object.keys(fileData.instructions.category_distribution).join(', ')
+        : '';
+      
+      const score = Math.max(0, Math.round(results.score * 100) / 100); // Round to 2 decimal places
+      const total = results.totalQuestions;
+      
+      const resultJson = {
+        testInfo: {
+          fileName: state.currentFileName,
+          section: subject,
+          testDate: new Date().toISOString(),
+          duration: state.testDuration,
+          totalTime: results.totalTime,
+          negativeMarking: state.negativeMarking,
+          questionSource: state.questionSource
+        },
+        performance: {
+          score: results.score,
+          totalQuestions: results.totalQuestions,
+          scorePercentage: Math.round((results.score / results.totalQuestions) * 100),
+          questionCounts: results.questionCounts
+        },
+        answers: state.answers,
+        timeSpent: state.timeSpent,
+        bookmarked: state.bookmarked,
+        topicStats: results.topicStats,
+        difficultyStats: results.difficultyStats,
+        questionResults: results.questionResults
+      };
+
+      console.log('Saving test results to database...', {
+        fileId: state.currentFileId,
+        subject,
+        score,
+        total
+      });
+
+      const savedResult = await api.saveTestResult(
+        state.currentFileId,
+        subject,
+        chapter,
+        score,
+        total,
+        resultJson
+      );
+      
+      console.log('Test results saved successfully:', savedResult.id);
+      
+      // Store the result ID for potential future reference
+      this.stateManager.updateState({ savedResultId: savedResult.id });
+      
+    } catch (error) {
+      console.error('Failed to save test results to database:', error);
+      // Don't throw error to avoid breaking the test submission flow
+      // Just log the warning - the test results will still be shown locally
     }
   }
 

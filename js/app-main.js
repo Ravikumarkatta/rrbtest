@@ -528,6 +528,9 @@ class MockTestApp {
       // Initialize test state
       this.stateManager.startTest();
       
+      // Update test display with file information if available
+      this.updateTestFileDisplay();
+      
       // Start timers and auto-save
       this.testManager.startMainTimer();
       this.testManager.startAutoSave();
@@ -542,9 +545,52 @@ class MockTestApp {
     }
   }
 
+  // Update test file display in header
+  updateTestFileDisplay() {
+    const state = this.stateManager.getState();
+    const testFileInfo = document.getElementById('test-file-info');
+    const testFileName = document.getElementById('test-file-name');
+    const testSectionName = document.getElementById('test-section-name');
+
+    if (!testFileInfo || !testFileName || !testSectionName) return;
+
+    // Show file info if we have a loaded file from database
+    if (state.currentFileId && state.currentFileName) {
+      testFileName.textContent = state.currentFileName;
+      
+      // Get section name from the questions metadata or file data
+      let sectionName = 'Test Section';
+      if (state.customQuestions && state.customQuestions.length > 0) {
+        // Try to get section from the first question's metadata
+        const firstQuestion = state.customQuestions[0];
+        if (firstQuestion.metadata && firstQuestion.metadata.section) {
+          sectionName = firstQuestion.metadata.section;
+        } else if (firstQuestion.subject) {
+          sectionName = firstQuestion.subject;
+        } else if (firstQuestion.topic) {
+          sectionName = firstQuestion.topic;
+        }
+      }
+      
+      testSectionName.textContent = sectionName;
+      testFileInfo.style.display = 'flex';
+    } else if (state.questionSource === 'json' && state.customQuestions) {
+      // For locally uploaded JSON files
+      testFileName.textContent = 'Custom Test File';
+      testSectionName.textContent = state.customQuestions[0]?.topic || 'Custom Section';
+      testFileInfo.style.display = 'flex';
+    } else {
+      // Hide file info for default questions
+      testFileInfo.style.display = 'none';
+    }
+  }
+
   // Resume existing test
   resumeTest() {
     try {
+      // Update test display with file information if available
+      this.updateTestFileDisplay();
+      
       // Resume timers
       this.testManager.startMainTimer();
       this.testManager.startAutoSave();
@@ -1376,7 +1422,8 @@ window.loadTestFile = async function(id) {
       window.app.stateManager.updateState({ 
         questionSource: 'database',
         currentFileId: id,
-        currentFileName: fileData.file_name
+        currentFileName: fileData.file_name,
+        currentFileData: fileData.file_json // Store full file data for result saving
       });
       
       if (window.app.viewManager) {

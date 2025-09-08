@@ -920,9 +920,43 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
-.header-left .test-title {
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.test-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.test-title {
   font-weight: var(--font-weight-medium);
   color: var(--color-text);
+  font-size: var(--font-size-base);
+}
+
+.test-file-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-primary);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: var(--font-weight-medium);
+}
+
+.test-file-info svg {
+  width: 14px;
+  height: 14px;
+  stroke: var(--color-primary);
+  flex-shrink: 0;
 }
 
 .timer-container {
