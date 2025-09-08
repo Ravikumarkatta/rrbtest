@@ -3416,3 +3416,106 @@ input[type="file"].form-control:focus {
 [data-theme="dark"] .toast-close:hover {
   color: rgba(255, 255, 255, 0.9);
 }
+
+/* ================================
+   Touch-Friendly Mobile Improvements
+   ================================ */
+
+/* Larger touch targets for mobile */
+@media (max-width: 768px) {
+  .btn, button {
+    min-height: 44px; /* Apple's recommended minimum touch target */
+    padding: var(--space-12) var(--space-16);
+  }
+  
+  .file-actions .btn {
+    min-height: 40px;
+    padding: var(--space-8) var(--space-12);
+  }
+  
+  /* Improve tap targets for small buttons */
+  .navigation-buttons .btn {
+    min-height: 48px;
+    min-width: 80px;
+  }
+  
+  /* Better spacing for form elements */
+  input, select, textarea {
+    min-height: 44px;
+    padding: var(--space-12);
+  }
+  
+  /* Improve checkbox and radio button targets */
+  input[type="checkbox"], input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    min-height: auto;
+  }
+  
+  /* Better question option spacing on mobile */
+  .option-item {
+    padding: var(--space-12);
+    margin-bottom: var(--space-8);
+  }
+  
+  .option-item label {
+    padding: var(--space-8);
+    cursor: pointer;
+    display: block;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+}
+
+/* Prevent zoom on input focus for iOS */
+@media screen and (max-width: 768px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="password"],
+  input[type="search"],
+  select,
+  textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+}
+
+/* Better touch scrolling for mobile */
+.file-list,
+.dashboard-content,
+.question-container {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Improve mobile navigation */
+@media (max-width: 480px) {
+  .test-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+  }
+  
+  /* Make question text more readable on small screens */
+  .question-text {
+    font-size: var(--font-size-lg);
+    line-height: 1.5;
+  }
+  
+  /* Improve option button sizing */
+  .option-item {
+    font-size: var(--font-size-md);
+  }
+}
+
+/* Dark mode improvements for mobile */
+[data-theme="dark"] @media (max-width: 480px) {
+  .test-header {
+    background: var(--color-charcoal-800);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
