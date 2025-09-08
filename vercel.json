@@ -17,8 +17,8 @@
     }
   ],
   "env": {
-    "NEON_DATABASE_URL": "@neon_database_url",
+    "NEON_DATABASE_URL": "postgresql://neondb_owner:npg_ztjP7apWB0UO@ep-red-truth-a1yf3tg6-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
     "NODE_ENV": "production",
-    "ALLOWED_ORIGINS": "https://your-frontend-domain.vercel.app"
+    "ALLOWED_ORIGINS": "https://rrbtest.vercel.app"
   }
 }
