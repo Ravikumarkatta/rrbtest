@@ -6,6 +6,7 @@ class DashboardManager {
     this.api = new MockTestAPI();
     this.subjectChart = null;
     this.trendsChart = null;
+    this.apiAvailable = true; // Track API availability
     this.currentFilters = {
       subject: '',
       chapter: '',
@@ -18,13 +19,64 @@ class DashboardManager {
   // Initialize dashboard
   async init() {
     try {
-      await this.loadDashboardData();
-      this.setupEventListeners();
-      this.startAutoRefresh();
+      // Check if API is available first
+      this.apiAvailable = await this.checkAPIAvailability();
+      
+      if (this.apiAvailable) {
+        await this.loadDashboardData();
+        this.setupEventListeners();
+        this.startAutoRefresh();
+      } else {
+        // Show offline dashboard with sample data
+        this.showOfflineDashboard();
+        this.setupEventListeners();
+      }
     } catch (error) {
       console.error('Dashboard initialization error:', error);
-      this.showError('Failed to load dashboard data. Please check your connection.');
+      this.apiAvailable = false;
+      this.showOfflineDashboard();
+      this.setupEventListeners();
     }
+  }
+
+  // Check if API is available
+  async checkAPIAvailability() {
+    try {
+      await this.api.request('/health');
+      return true;
+    } catch (error) {
+      // More user-friendly error logging
+      if (error.message.includes('API endpoint not found')) {
+        console.warn('Dashboard API not configured. Running in offline mode.');
+      } else if (error.message.includes('Failed to fetch')) {
+        console.warn('Dashboard API server not running. Running in offline mode.');
+      } else {
+        console.warn('API not available, using offline mode:', error.message);
+      }
+      return false;
+    }
+  }
+
+  // Show offline dashboard with sample data
+  showOfflineDashboard() {
+    // More informative status message
+    const statusMessage = 'Dashboard is running in offline mode. Start the server or deploy to production to see live data.';
+    this.showStatus(statusMessage, 'info');
+    
+    // Load sample data
+    const sampleStats = {
+      total_attempts: 0,
+      average_percentage: 0,
+      best_percentage: 0,
+      unique_tests_taken: 0
+    };
+    
+    this.updateStatisticsDisplay(sampleStats);
+    this.updateSubjectTable([]);
+    this.updateChapterTable([]);
+    this.updateRecentResultsTable([]);
+    this.updateSubjectChart([]);
+    this.updateTrendsChart([]);
   }
 
   // Load all dashboard data
@@ -46,7 +98,13 @@ class DashboardManager {
       this.updateStatisticsDisplay(stats);
     } catch (error) {
       console.error('Failed to load statistics:', error);
-      this.showError('Failed to load statistics');
+      // Show default values instead of error
+      this.updateStatisticsDisplay({
+        total_attempts: 0,
+        average_percentage: 0,
+        best_percentage: 0,
+        unique_tests_taken: 0
+      });
     }
   }
 
@@ -68,7 +126,9 @@ class DashboardManager {
       this.updateSubjectChart(subjectData);
     } catch (error) {
       console.error('Failed to load subject data:', error);
-      this.showError('Failed to load subject data');
+      // Show empty data instead of error
+      this.updateSubjectTable([]);
+      this.updateSubjectChart([]);
     }
   }
 
@@ -99,55 +159,70 @@ class DashboardManager {
     const ctx = document.getElementById('subject-chart');
     if (!ctx) return;
 
+    // Check if Chart.js is available
+    if (typeof Chart === 'undefined') {
+      console.warn('Chart.js not loaded, skipping chart creation');
+      return;
+    }
+
     if (this.subjectChart) {
       this.subjectChart.destroy();
+    }
+
+    if (data.length === 0) {
+      // Show placeholder for empty chart
+      return;
     }
 
     const labels = data.map(item => item.subject);
     const averageScores = data.map(item => Math.round(item.average_percentage));
     const bestScores = data.map(item => Math.round(item.best_percentage));
 
-    this.subjectChart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            label: 'Average Score',
-            data: averageScores,
-            backgroundColor: '#4CAF50',
-            borderColor: '#45a049',
-            borderWidth: 1
-          },
-          {
-            label: 'Best Score',
-            data: bestScores,
-            backgroundColor: '#2196F3',
-            borderColor: '#1976D2',
-            borderWidth: 1
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          y: {
-            beginAtZero: true,
-            max: 100,
-            ticks: {
-              callback: function(value) {
-                return value + '%';
+    try {
+      this.subjectChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Average Score',
+              data: averageScores,
+              backgroundColor: '#4CAF50',
+              borderColor: '#45a049',
+              borderWidth: 1
+            },
+            {
+              label: 'Best Score',
+              data: bestScores,
+              backgroundColor: '#2196F3',
+              borderColor: '#1976D2',
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              ticks: {
+                callback: function(value) {
+                  return value + '%';
+                }
               }
             }
-          }
-        },
-        plugins: {
-          legend: {
-            display: false // We use custom legend
+          },
+          plugins: {
+            legend: {
+              display: false // We use custom legend
+            }
           }
         }
-      }
-    });
+      });
+    } catch (error) {
+      console.error('Failed to create subject chart:', error);
+    }
   }
 
   // Load and display chapter data
@@ -157,7 +232,8 @@ class DashboardManager {
       this.updateChapterTable(chapterData);
     } catch (error) {
       console.error('Failed to load chapter data:', error);
-      this.showError('Failed to load chapter data');
+      // Show empty data instead of error
+      this.updateChapterTable([]);
     }
   }
 
@@ -191,7 +267,8 @@ class DashboardManager {
       this.updateRecentResultsTable(recentData);
     } catch (error) {
       console.error('Failed to load recent results:', error);
-      this.showError('Failed to load recent results');
+      // Show empty data instead of error
+      this.updateRecentResultsTable([]);
     }
   }
 
@@ -225,7 +302,8 @@ class DashboardManager {
       this.updateTrendsChart(trendsData);
     } catch (error) {
       console.error('Failed to load trends:', error);
-      this.showError('Failed to load trends data');
+      // Show empty chart instead of error
+      this.updateTrendsChart([]);
     }
   }
 
@@ -234,41 +312,56 @@ class DashboardManager {
     const ctx = document.getElementById('trends-chart');
     if (!ctx) return;
 
+    // Check if Chart.js is available
+    if (typeof Chart === 'undefined') {
+      console.warn('Chart.js not loaded, skipping chart creation');
+      return;
+    }
+
     if (this.trendsChart) {
       this.trendsChart.destroy();
+    }
+
+    if (data.length === 0) {
+      // Show placeholder for empty chart
+      return;
     }
 
     const labels = data.map(item => this.formatDate(item.test_date));
     const scores = data.map(item => Math.round(item.average_percentage));
 
-    this.trendsChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Average Score',
-          data: scores,
-          borderColor: '#4CAF50',
-          backgroundColor: 'rgba(76, 175, 80, 0.1)',
-          fill: true,
-          tension: 0.4
-        }]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          y: {
-            beginAtZero: true,
-            max: 100,
-            ticks: {
-              callback: function(value) {
-                return value + '%';
+    try {
+      this.trendsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Average Score',
+            data: scores,
+            borderColor: '#4CAF50',
+            backgroundColor: 'rgba(76, 175, 80, 0.1)',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              ticks: {
+                callback: function(value) {
+                  return value + '%';
+                }
               }
             }
           }
         }
-      }
-    });
+      });
+    } catch (error) {
+      console.error('Failed to create trends chart:', error);
+    }
   }
 
   // Populate filter dropdowns
@@ -342,6 +435,13 @@ class DashboardManager {
 
   // Apply filters
   async applyFilters() {
+    // Check if API is available before trying to apply filters
+    if (!this.apiAvailable) {
+      this.showStatus('Filters not available in offline mode. Start the server to use filtering.', 'info');
+      setTimeout(() => this.hideStatus(), 4000);
+      return;
+    }
+
     this.currentFilters = {
       subject: document.getElementById('subject-filter-dashboard')?.value || '',
       chapter: document.getElementById('chapter-filter-dashboard')?.value || '',
@@ -365,7 +465,13 @@ class DashboardManager {
       setTimeout(() => this.hideStatus(), 3000);
     } catch (error) {
       console.error('Failed to apply filters:', error);
-      this.showError('Failed to apply filters');
+      
+      // More user-friendly error message
+      if (error.message.includes('API endpoint not found')) {
+        this.showError('Filtering requires the backend server. Please start the server to use this feature.');
+      } else {
+        this.showError('Failed to apply filters. Please try again.');
+      }
     }
   }
 
@@ -384,6 +490,12 @@ class DashboardManager {
 
   // Export subject data
   async exportSubjectData() {
+    if (!this.apiAvailable) {
+      this.showStatus('Export not available in offline mode. Start the server to export data.', 'info');
+      setTimeout(() => this.hideStatus(), 4000);
+      return;
+    }
+
     try {
       const data = await this.api.request('/dashboard/results-by-subject');
       const csvContent = this.convertToCSV(data, [
@@ -396,12 +508,18 @@ class DashboardManager {
       setTimeout(() => this.hideStatus(), 3000);
     } catch (error) {
       console.error('Failed to export subject data:', error);
-      this.showError('Failed to export subject data');
+      this.showError('Failed to export subject data. Please ensure the server is running.');
     }
   }
 
   // Export chapter data
   async exportChapterData() {
+    if (!this.apiAvailable) {
+      this.showStatus('Export not available in offline mode. Start the server to export data.', 'info');
+      setTimeout(() => this.hideStatus(), 4000);
+      return;
+    }
+
     try {
       const data = await this.api.request('/dashboard/results-by-chapter');
       const csvContent = this.convertToCSV(data, [
@@ -414,7 +532,7 @@ class DashboardManager {
       setTimeout(() => this.hideStatus(), 3000);
     } catch (error) {
       console.error('Failed to export chapter data:', error);
-      this.showError('Failed to export chapter data');
+      this.showError('Failed to export chapter data. Please ensure the server is running.');
     }
   }
 
@@ -450,6 +568,11 @@ class DashboardManager {
 
   // Start auto-refresh for real-time updates
   startAutoRefresh() {
+    // Only start auto-refresh if API is available
+    if (this.apiAvailable === false) {
+      return;
+    }
+    
     // Refresh every 5 minutes
     this.autoRefreshInterval = setInterval(() => {
       this.refreshDashboard();

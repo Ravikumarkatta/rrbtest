@@ -2,8 +2,17 @@
 // This shows how to integrate the frontend with the backend API
 
 class MockTestAPI {
-  constructor(baseURL = 'http://localhost:3000') {
-    this.baseURL = baseURL;
+  constructor(baseURL = null) {
+    // Auto-detect the base URL based on the environment
+    if (baseURL) {
+      this.baseURL = baseURL;
+    } else if (typeof window !== 'undefined') {
+      // In browser environment, use current origin
+      this.baseURL = window.location.origin;
+    } else {
+      // Fallback for server-side or testing
+      this.baseURL = 'http://localhost:3000';
+    }
   }
 
   // Helper method for making API requests
@@ -19,10 +28,33 @@ class MockTestAPI {
 
     try {
       const response = await fetch(url, config);
-      const data = await response.json();
+      
+      // Check if the response is JSON
+      const contentType = response.headers.get('content-type');
+      const isJson = contentType && contentType.includes('application/json');
+      
+      let data;
+      if (isJson) {
+        data = await response.json();
+      } else {
+        // If not JSON, it might be HTML (404 page, etc.)
+        const text = await response.text();
+        
+        // If it looks like HTML, throw a more meaningful error
+        if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+          throw new Error(`API endpoint not found: ${endpoint} (received HTML instead of JSON)`);
+        }
+        
+        // Try to parse as JSON anyway, in case content-type is wrong
+        try {
+          data = JSON.parse(text);
+        } catch (parseError) {
+          throw new Error(`Invalid response format from ${endpoint}: ${text.substring(0, 100)}...`);
+        }
+      }
       
       if (!response.ok) {
-        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        throw new Error(data?.error || `HTTP error! status: ${response.status}`);
       }
       
       return data;
