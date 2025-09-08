@@ -18,6 +18,9 @@
   "devDependencies": {
     "nodemon": "^3.0.1"
   },
+  "overrides": {
+  "nodemon > debug": "^4.3.4"
+},
   "keywords": [
     "mock-test",
     "units",
@@ -28,4 +31,5 @@
   ],
   "author": "",
   "license": "MIT"
+  
 }
