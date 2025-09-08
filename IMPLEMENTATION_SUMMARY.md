@@ -31,22 +31,42 @@ The system now supports an **enhanced test file format** while maintaining **bac
 
 ```json
 {
-  "metadata": {
-    "title": "Test Title",
-    "subject": "Physics", 
-    "chapter": "Units & Measurements",
-    "total_questions": 30,
-    "time_limit": 45,
-    "target_score": 75,
-    "instructions": { ... }
+  "section": "Section name",
+  "total_questions": 35,
+  "time_limit": 60,
+  "target_score": "80%",
+  "questions": [
+    {
+      "id": "...",
+      "text": "...",
+      "options": [...],
+      "correct_answer": "...",
+      "points": ...,
+      "category": "...",
+      "difficulty": "...",
+      "time_limit": ...,
+      "solution": "..."
+    }
+  ],
+  "scoring": {
+    "total_points": 70,
+    "passing_score": 56,
+    "grade_scale": {
+      "A": "63-70",
+      ...
+    }
   },
-  "scoring_rules": {
-    "correct_points": 4,
-    "wrong_points": -1,
-    "negative_marking": true
-  },
-  "grade_scale": { ... },
-  "questions": [ ... ]
+  "instructions": {
+    "time_management": "...",
+    "difficulty_distribution": {
+      "easy": "20",
+      ...
+    },
+    "category_distribution": {
+      "Browsers": "14",
+      ...
+    }
+  }
 }
 ```
 
@@ -211,7 +231,10 @@ Potential improvements that could be added:
 ```javascript
 const api = new MockTestAPI();
 await api.addTestFile('physics-test.json', {
-  metadata: { title: 'Physics Test', subject: 'Physics' },
+  section: 'Physics Test',
+  total_questions: 30,
+  time_limit: 45,
+  target_score: '75%',
   questions: [...]
 });
 ```

@@ -123,7 +123,10 @@ Content-Type: application/json
 {
   "fileName": "physics-unit-1.json",
   "fileJson": {
-    "metadata": { ... },
+    "section": "Physics - Units & Measurements",
+    "total_questions": 30,
+    "time_limit": 45,
+    "target_score": "75%",
     "questions": [ ... ]
   }
 }
@@ -278,75 +281,85 @@ GET /api/health
 
 ## Enhanced Test File Format
 
-The new enhanced format supports additional metadata and configuration:
+The file_json JSONB field stores the full test file content in the following format:
 
 ### Complete Format Structure
 
 ```json
 {
-  "metadata": {
-    "title": "Test Title",
-    "description": "Test Description",
-    "subject": "Physics",
-    "chapter": "Units and Measurements",
-    "section": "Unit 1: Physical World and Measurement",
-    "total_questions": 30,
-    "time_limit": 45,
-    "target_score": 75,
-    "created": "2024-01-15T10:30:00.000Z",
-    "version": "1.0",
-    "author": "Author Name",
-    "difficulty_level": "medium",
-    "instructions": {
-      "time_management": "Spend no more than 1.5 minutes per question",
-      "distribution": "Questions are ordered from easy to hard",
-      "tips": ["Read carefully", "Use elimination", "Review marked"]
-    }
-  },
-  "scoring_rules": {
-    "correct_points": 4,
-    "wrong_points": -1,
-    "unanswered_points": 0,
-    "negative_marking": true,
-    "passing_percentage": 60
-  },
-  "grade_scale": {
-    "A+": {"min": 90, "max": 100},
-    "A": {"min": 80, "max": 89},
-    "B+": {"min": 70, "max": 79},
-    "B": {"min": 60, "max": 69},
-    "C": {"min": 50, "max": 59},
-    "F": {"min": 0, "max": 49}
-  },
+  "section": "Section name",
+  "total_questions": 35,
+  "time_limit": 60,
+  "target_score": "80%",
   "questions": [
     {
-      "id": "units_001",
-      "text": "Question text here?",
-      "type": "multiple_choice",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct_answer": "Option A",
-      "points": 4,
-      "category": "Category Name",
-      "difficulty": "easy",
-      "time_limit": 30,
-      "solution": "Detailed explanation here.",
-      "pyq_year": "RRB ALP 2018"
+      "id": "...",
+      "text": "...",
+      "options": [...],
+      "correct_answer": "...",
+      "points": ...,
+      "category": "...",
+      "difficulty": "...",
+      "time_limit": ...,
+      "solution": "..."
+    },
+    ...
+  ],
+  "scoring": {
+    "total_points": 70,
+    "passing_score": 56,
+    "grade_scale": {
+      "A": "63-70",
+      ...
     }
-  ]
+  },
+  "instructions": {
+    "time_management": "...",
+    "difficulty_distribution": {
+      "easy": "20",
+      ...
+    },
+    "category_distribution": {
+      "Browsers": "14",
+      ...
+    }
+  }
 }
 ```
+
+### Required Fields
+
+- **section**: String identifying the test section or topic name
+- **total_questions**: Number representing total questions in the test  
+- **time_limit**: Number representing time limit in minutes
+- **target_score**: String or number representing the target score (e.g., "80%" or 80)
+- **questions**: Array of question objects with the structure shown above
+
+### Optional Fields
+
+- **scoring**: Object containing scoring configuration
+- **instructions**: Object containing test instructions and distributions
+
+### Question Structure
+
+Each question must include:
+- **id**: Unique identifier for the question
+- **text**: Question text
+- **options**: Array of answer options
+- **correct_answer**: The correct answer
+- **points**: Points awarded for correct answer
+
+Optional question fields:
+- **category**: Question category for analytics
+- **difficulty**: Difficulty level (easy/medium/hard)
+- **time_limit**: Individual question time limit
+- **solution**: Detailed solution explanation
 
 ### Backward Compatibility
 
 The system supports both:
 - **Legacy format**: Just `{"questions": [...]}`
-- **Enhanced format**: Full structure with metadata
-
-### Migration from Legacy Format
-
-To convert existing test files:
-1. Use the `EnhancedQuestionManager.exportToEnhancedJSON()` method
-2. Or manually add metadata wrapper around existing questions array
+- **Enhanced format**: Full structure with section and scoring
 
 ## Troubleshooting
 

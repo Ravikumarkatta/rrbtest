@@ -3,37 +3,78 @@ const db = require('./database');
 
 class TestFileService {
   /**
-   * Validate test file JSON structure
+   * Validate test file JSON structure according to specification:
+   * {
+   *   "section": "Section name",
+   *   "total_questions": 35,
+   *   "time_limit": 60,
+   *   "target_score": "80%",
+   *   "questions": [...],
+   *   "scoring": {...},
+   *   "instructions": {...}
+   * }
    */
   validateTestFile(fileJson) {
     const errors = [];
 
     // Check required top-level properties
-    if (!fileJson.metadata) {
-      errors.push('Missing required "metadata" property');
-    } else {
-      const { metadata } = fileJson;
-      if (!metadata.title) errors.push('Missing metadata.title');
-      if (!metadata.subject) errors.push('Missing metadata.subject');
-      if (!metadata.total_questions) errors.push('Missing metadata.total_questions');
-      if (!metadata.time_limit) errors.push('Missing metadata.time_limit');
-      if (!metadata.target_score) errors.push('Missing metadata.target_score');
+    if (!fileJson.section || typeof fileJson.section !== 'string') {
+      errors.push('Missing or invalid required "section" property (must be string)');
+    }
+
+    if (!fileJson.total_questions || typeof fileJson.total_questions !== 'number' || fileJson.total_questions <= 0) {
+      errors.push('Missing or invalid "total_questions" property (must be positive number)');
+    }
+
+    if (!fileJson.time_limit || typeof fileJson.time_limit !== 'number' || fileJson.time_limit <= 0) {
+      errors.push('Missing or invalid "time_limit" property (must be positive number)');
+    }
+
+    if (!fileJson.target_score) {
+      errors.push('Missing required "target_score" property');
     }
 
     if (!fileJson.questions || !Array.isArray(fileJson.questions)) {
       errors.push('Missing or invalid "questions" array');
     } else if (fileJson.questions.length === 0) {
       errors.push('Questions array cannot be empty');
+    } else {
+      // Validate questions structure
+      fileJson.questions.forEach((question, index) => {
+        if (!question.id) errors.push(`Question ${index + 1}: missing "id" property`);
+        if (!question.text) errors.push(`Question ${index + 1}: missing "text" property`);
+        if (!question.options || !Array.isArray(question.options)) {
+          errors.push(`Question ${index + 1}: missing or invalid "options" array`);
+        }
+        if (!question.correct_answer) errors.push(`Question ${index + 1}: missing "correct_answer" property`);
+        if (question.points === undefined || typeof question.points !== 'number') {
+          errors.push(`Question ${index + 1}: missing or invalid "points" property (must be number)`);
+        }
+      });
     }
 
-    // Validate scoring rules if present
-    if (fileJson.scoring_rules) {
-      const { scoring_rules } = fileJson;
-      if (typeof scoring_rules.correct_points !== 'number') {
-        errors.push('scoring_rules.correct_points must be a number');
+    // Validate scoring structure if present
+    if (fileJson.scoring) {
+      const { scoring } = fileJson;
+      if (typeof scoring.total_points !== 'number') {
+        errors.push('scoring.total_points must be a number');
       }
-      if (typeof scoring_rules.wrong_points !== 'number') {
-        errors.push('scoring_rules.wrong_points must be a number');
+      if (typeof scoring.passing_score !== 'number') {
+        errors.push('scoring.passing_score must be a number');
+      }
+      if (scoring.grade_scale && typeof scoring.grade_scale !== 'object') {
+        errors.push('scoring.grade_scale must be an object');
+      }
+    }
+
+    // Validate instructions structure if present
+    if (fileJson.instructions) {
+      const { instructions } = fileJson;
+      if (instructions.difficulty_distribution && typeof instructions.difficulty_distribution !== 'object') {
+        errors.push('instructions.difficulty_distribution must be an object');
+      }
+      if (instructions.category_distribution && typeof instructions.category_distribution !== 'object') {
+        errors.push('instructions.category_distribution must be an object');
       }
     }
 
@@ -69,7 +110,10 @@ class TestFileService {
   async listTestFiles(limit = 50, offset = 0) {
     const query = `
       SELECT id, file_name, uploaded_at, 
-             file_json->>'metadata' as metadata,
+             file_json->>'section' as section,
+             file_json->>'total_questions' as total_questions,
+             file_json->>'time_limit' as time_limit,
+             file_json->>'target_score' as target_score,
              jsonb_array_length(file_json->'questions') as question_count
       FROM test_files 
       ORDER BY uploaded_at DESC 
@@ -79,7 +123,8 @@ class TestFileService {
     const result = await db.query(query, [limit, offset]);
     return result.map(row => ({
       ...row,
-      metadata: JSON.parse(row.metadata)
+      total_questions: parseInt(row.total_questions) || 0,
+      time_limit: parseInt(row.time_limit) || 0
     }));
   }
 
