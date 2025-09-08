@@ -3214,3 +3214,44 @@ input[type="file"].form-control:focus {
     gap: var(--space-8);
   }
 }
+
+/* ================================
+   Dashboard Button Styles
+   ================================ */
+
+.start-button-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  align-items: center;
+  margin-top: var(--space-32);
+}
+
+.dashboard-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+}
+
+.dashboard-btn:hover {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.dashboard-btn:active {
+  transform: translateY(0);
+}
+
+.btn--large {
+  min-width: 200px;
+  font-size: var(--font-size-lg);
+  gap: var(--space-8);
+}
+
+@media (min-width: 768px) {
+  .start-button-container {
+    flex-direction: row;
+    justify-content: center;
+  }
+}

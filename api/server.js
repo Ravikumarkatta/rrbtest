@@ -158,6 +158,83 @@ app.get('/api/test-files/:fileId/results', async (req, res) => {
   }
 });
 
+// Dashboard endpoints
+// Get dashboard statistics
+app.get('/api/dashboard/statistics', async (req, res) => {
+  try {
+    const stats = await testResultService.getDashboardStatistics();
+    res.json(stats);
+  } catch (error) {
+    console.error('Get dashboard statistics error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get results grouped by subject
+app.get('/api/dashboard/results-by-subject', async (req, res) => {
+  try {
+    const results = await testResultService.getResultsBySubjectGrouped();
+    res.json(results);
+  } catch (error) {
+    console.error('Get results by subject error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get results grouped by chapter
+app.get('/api/dashboard/results-by-chapter', async (req, res) => {
+  try {
+    const results = await testResultService.getResultsByChapterGrouped();
+    res.json(results);
+  } catch (error) {
+    console.error('Get results by chapter error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get recent test results
+app.get('/api/dashboard/recent-results', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 20;
+    const results = await testResultService.getRecentResults(limit);
+    res.json(results);
+  } catch (error) {
+    console.error('Get recent results error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get filtered results
+app.get('/api/dashboard/results', async (req, res) => {
+  try {
+    const { subject, chapter, startDate, endDate, limit = 50, offset = 0 } = req.query;
+    const results = await testResultService.getResultsWithFilters({
+      subject,
+      chapter,
+      startDate,
+      endDate,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+    res.json(results);
+  } catch (error) {
+    console.error('Get filtered results error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get performance trends
+app.get('/api/dashboard/trends', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const trends = await testResultService.getPerformanceTrends(days);
+    res.json(trends);
+  } catch (error) {
+    console.error('Get performance trends error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Error handling middleware
 app.use((error, req, res, next) => {
   console.error('Unhandled error:', error);

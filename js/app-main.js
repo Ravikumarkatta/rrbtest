@@ -71,6 +71,12 @@ class MockTestApp {
       startBtn.addEventListener('click', () => this.startTest());
     }
 
+    // Dashboard button
+    const dashboardBtn = document.getElementById('view-dashboard-btn');
+    if (dashboardBtn) {
+      dashboardBtn.addEventListener('click', () => this.viewDashboard());
+    }
+
     // Resume test button
     const resumeBtn = document.getElementById('resume-test-btn');
     if (resumeBtn) {
@@ -542,6 +548,16 @@ class MockTestApp {
     } catch (error) {
       console.error('Start test error:', error);
       this.showError('Failed to start test');
+    }
+  }
+
+  // View dashboard
+  viewDashboard() {
+    try {
+      this.viewManager.showView('dashboard');
+    } catch (error) {
+      console.error('View dashboard error:', error);
+      this.showError('Failed to load dashboard');
     }
   }
 

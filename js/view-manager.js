@@ -4,7 +4,7 @@
 class ViewManager {
   constructor() {
     this.currentView = 'landing';
-    this.views = ['landing', 'test', 'result', 'review-answers', 'solution-analysis'];
+    this.views = ['landing', 'test', 'result', 'review-answers', 'solution-analysis', 'dashboard'];
     this.componentCache = {};
   }
 
@@ -27,7 +27,8 @@ class ViewManager {
       this.loadComponent('result-view'),
       this.loadComponent('review-answers-view'),
       this.loadComponent('review-panel'),
-      this.loadComponent('solution-analysis-view')
+      this.loadComponent('solution-analysis-view'),
+      this.loadComponent('dashboard-view')
     ];
 
     try {
@@ -128,6 +129,9 @@ class ViewManager {
         case 'review-panel':
           this.initializeReviewPanel(element);
           break;
+        case 'dashboard-view':
+          this.initializeDashboardView(element);
+          break;
       }
     } catch (error) {
       console.error(`Error initializing component ${componentName}:`, error);
@@ -159,6 +163,15 @@ class ViewManager {
   initializeReviewPanel(element) {
     // Initialize review panel functionality
     element.classList.add('review-panel');
+  }
+
+  initializeDashboardView(element) {
+    // Initialize dashboard view functionality
+    if (window.dashboardManager) {
+      window.dashboardManager.init().catch(error => {
+        console.error('Dashboard initialization failed:', error);
+      });
+    }
   }
 
   // Create fallback view for component loading failures
@@ -251,6 +264,14 @@ class ViewManager {
           // Initialize review functionality
           if (window.testManager) {
             window.testManager.initializeReview();
+          }
+          break;
+        case 'dashboard':
+          // Initialize dashboard functionality
+          if (window.dashboardManager) {
+            window.dashboardManager.init().catch(error => {
+              console.error('Dashboard initialization failed:', error);
+            });
           }
           break;
       }

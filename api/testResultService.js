@@ -93,6 +93,162 @@ class TestResultService {
 
     return result[0];
   }
+
+  /**
+   * Get dashboard statistics
+   */
+  async getDashboardStatistics() {
+    const query = `
+      SELECT 
+        COUNT(*) as total_attempts,
+        AVG(CAST(score AS FLOAT) / CAST(total AS FLOAT) * 100) as average_percentage,
+        MAX(CAST(score AS FLOAT) / CAST(total AS FLOAT) * 100) as best_percentage,
+        MIN(CAST(score AS FLOAT) / CAST(total AS FLOAT) * 100) as lowest_percentage,
+        COUNT(DISTINCT file_id) as unique_tests_taken,
+        COUNT(DISTINCT subject) as unique_subjects
+      FROM test_results
+    `;
+    
+    const result = await db.query(query);
+    return result[0];
+  }
+
+  /**
+   * Get results grouped by subject
+   */
+  async getResultsBySubjectGrouped() {
+    const query = `
+      SELECT 
+        tr.subject,
+        COUNT(*) as attempts,
+        AVG(CAST(tr.score AS FLOAT) / CAST(tr.total AS FLOAT) * 100) as average_percentage,
+        MAX(CAST(tr.score AS FLOAT) / CAST(tr.total AS FLOAT) * 100) as best_percentage,
+        MIN(CAST(tr.score AS FLOAT) / CAST(tr.total AS FLOAT) * 100) as lowest_percentage,
+        tf.file_json->>'section' as section_name
+      FROM test_results tr
+      JOIN test_files tf ON tr.file_id = tf.id
+      GROUP BY tr.subject, tf.file_json->>'section'
+      ORDER BY tr.subject
+    `;
+    
+    const result = await db.query(query);
+    return result;
+  }
+
+  /**
+   * Get results grouped by chapter
+   */
+  async getResultsByChapterGrouped() {
+    const query = `
+      SELECT 
+        tr.subject,
+        tr.chapter,
+        COUNT(*) as attempts,
+        AVG(CAST(tr.score AS FLOAT) / CAST(tr.total AS FLOAT) * 100) as average_percentage,
+        MAX(CAST(tr.score AS FLOAT) / CAST(tr.total AS FLOAT) * 100) as best_percentage,
+        MIN(CAST(tr.score AS FLOAT) / CAST(tr.total AS FLOAT) * 100) as lowest_percentage,
+        tf.file_json->>'section' as section_name
+      FROM test_results tr
+      JOIN test_files tf ON tr.file_id = tf.id
+      WHERE tr.chapter IS NOT NULL
+      GROUP BY tr.subject, tr.chapter, tf.file_json->>'section'
+      ORDER BY tr.subject, tr.chapter
+    `;
+    
+    const result = await db.query(query);
+    return result;
+  }
+
+  /**
+   * Get recent test results with file information
+   */
+  async getRecentResults(limit = 20) {
+    const query = `
+      SELECT 
+        tr.*,
+        tf.file_name,
+        tf.file_json->>'section' as section_name,
+        CAST(tr.score AS FLOAT) / CAST(tr.total AS FLOAT) * 100 as percentage
+      FROM test_results tr
+      JOIN test_files tf ON tr.file_id = tf.id
+      ORDER BY tr.date_taken DESC
+      LIMIT $1
+    `;
+    
+    const result = await db.query(query, [limit]);
+    return result;
+  }
+
+  /**
+   * Get results with date range filtering
+   */
+  async getResultsWithFilters({ subject, chapter, startDate, endDate, limit = 50, offset = 0 }) {
+    let whereConditions = [];
+    let params = [];
+    let paramIndex = 1;
+
+    if (subject) {
+      whereConditions.push(`tr.subject = $${paramIndex}`);
+      params.push(subject);
+      paramIndex++;
+    }
+
+    if (chapter) {
+      whereConditions.push(`tr.chapter = $${paramIndex}`);
+      params.push(chapter);
+      paramIndex++;
+    }
+
+    if (startDate) {
+      whereConditions.push(`tr.date_taken >= $${paramIndex}`);
+      params.push(startDate);
+      paramIndex++;
+    }
+
+    if (endDate) {
+      whereConditions.push(`tr.date_taken <= $${paramIndex}`);
+      params.push(endDate);
+      paramIndex++;
+    }
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    const query = `
+      SELECT 
+        tr.*,
+        tf.file_name,
+        tf.file_json->>'section' as section_name,
+        CAST(tr.score AS FLOAT) / CAST(tr.total AS FLOAT) * 100 as percentage
+      FROM test_results tr
+      JOIN test_files tf ON tr.file_id = tf.id
+      ${whereClause}
+      ORDER BY tr.date_taken DESC
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
+    
+    params.push(limit, offset);
+    const result = await db.query(query, params);
+    return result;
+  }
+
+  /**
+   * Get performance trends over time
+   */
+  async getPerformanceTrends(days = 30) {
+    const query = `
+      SELECT 
+        DATE(tr.date_taken) as test_date,
+        COUNT(*) as attempts,
+        AVG(CAST(tr.score AS FLOAT) / CAST(tr.total AS FLOAT) * 100) as average_percentage
+      FROM test_results tr
+      WHERE tr.date_taken >= NOW() - INTERVAL '${days} days'
+      GROUP BY DATE(tr.date_taken)
+      ORDER BY test_date
+    `;
+    
+    const result = await db.query(query);
+    return result;
+  }
 }
 
 module.exports = new TestResultService();

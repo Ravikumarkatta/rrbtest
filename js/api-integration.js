@@ -75,6 +75,35 @@ class MockTestAPI {
     return this.request(`/test-files/${fileId}/results?limit=${limit}&offset=${offset}`);
   }
 
+  // Dashboard API methods
+  async getDashboardStatistics() {
+    return this.request('/dashboard/statistics');
+  }
+
+  async getResultsBySubject() {
+    return this.request('/dashboard/results-by-subject');
+  }
+
+  async getResultsByChapter() {
+    return this.request('/dashboard/results-by-chapter');
+  }
+
+  async getRecentResults(limit = 20) {
+    return this.request(`/dashboard/recent-results?limit=${limit}`);
+  }
+
+  async getFilteredResults(filters) {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) params.append(key, value);
+    });
+    return this.request(`/dashboard/results?${params.toString()}`);
+  }
+
+  async getPerformanceTrends(days = 30) {
+    return this.request(`/dashboard/trends?days=${days}`);
+  }
+
   // Health check
   async checkHealth() {
     return this.request('/health');
