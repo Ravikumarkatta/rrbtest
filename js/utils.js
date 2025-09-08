@@ -220,32 +220,192 @@ class Utils {
       message = message.message;
     }
     
-    // In a real app, this might show a toast or modal
     console.error(`${title}: ${message}`);
-    
-    // For now, use alert as fallback
-    if (Utils.isDevelopment()) {
-      alert(`${title}: ${message}`);
-    }
+    Toast.error(message, title);
   }
 
   // Show success message
   static showSuccess(message, title = 'Success') {
     console.log(`${title}: ${message}`);
-    
-    // In development, show alert
-    if (Utils.isDevelopment()) {
-      alert(`${title}: ${message}`);
+    Toast.success(message, title);
+  }
+
+  // Show warning message
+  static showWarning(message, title = 'Warning') {
+    console.warn(`${title}: ${message}`);
+    Toast.warning(message, title);
+  }
+
+  // Show info message
+  static showInfo(message, title = 'Info') {
+    console.info(`${title}: ${message}`);
+    Toast.info(message, title);
+  }
+}
+
+/**
+ * Toast Notification System
+ * Provides elegant toast notifications for user feedback
+ */
+class Toast {
+  static container = null;
+  static toasts = new Map();
+  static idCounter = 0;
+
+  // Initialize toast container
+  static init() {
+    if (!Toast.container) {
+      Toast.container = document.createElement('div');
+      Toast.container.className = 'toast-container';
+      document.body.appendChild(Toast.container);
     }
+  }
+
+  // Create and show a toast
+  static show(message, title = '', type = 'info', duration = 5000) {
+    Toast.init();
+    
+    const id = ++Toast.idCounter;
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.setAttribute('data-toast-id', id);
+    
+    // Get appropriate icon for toast type
+    const icon = Toast.getIcon(type);
+    
+    toast.innerHTML = `
+      <div class="toast-icon">${icon}</div>
+      <div class="toast-content">
+        ${title ? `<div class="toast-title">${Utils.escapeHtml(title)}</div>` : ''}
+        <div class="toast-message">${Utils.escapeHtml(message)}</div>
+      </div>
+      <button class="toast-close" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+      ${duration > 0 ? '<div class="toast-progress"></div>' : ''}
+    `;
+
+    // Add event listeners
+    const closeBtn = toast.querySelector('.toast-close');
+    closeBtn.addEventListener('click', () => Toast.hide(id));
+
+    // Add to container
+    Toast.container.appendChild(toast);
+    
+    // Store toast reference
+    Toast.toasts.set(id, {
+      element: toast,
+      timeout: null
+    });
+
+    // Trigger show animation
+    requestAnimationFrame(() => {
+      toast.classList.add('show');
+    });
+
+    // Auto-hide after duration
+    if (duration > 0) {
+      const progressBar = toast.querySelector('.toast-progress');
+      if (progressBar) {
+        progressBar.style.width = '100%';
+        progressBar.style.transitionDuration = `${duration}ms`;
+        requestAnimationFrame(() => {
+          progressBar.style.width = '0%';
+        });
+      }
+
+      const timeout = setTimeout(() => {
+        Toast.hide(id);
+      }, duration);
+
+      Toast.toasts.get(id).timeout = timeout;
+    }
+
+    return id;
+  }
+
+  // Hide a specific toast
+  static hide(id) {
+    const toastData = Toast.toasts.get(id);
+    if (!toastData) return;
+
+    const { element, timeout } = toastData;
+    
+    // Clear timeout if it exists
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+
+    // Hide animation
+    element.classList.add('hide');
+    
+    // Remove from DOM after animation
+    setTimeout(() => {
+      if (element.parentNode) {
+        element.parentNode.removeChild(element);
+      }
+      Toast.toasts.delete(id);
+    }, 300);
+  }
+
+  // Clear all toasts
+  static clear() {
+    Toast.toasts.forEach((_, id) => Toast.hide(id));
+  }
+
+  // Convenience methods for different toast types
+  static success(message, title = 'Success', duration = 4000) {
+    return Toast.show(message, title, 'success', duration);
+  }
+
+  static error(message, title = 'Error', duration = 6000) {
+    return Toast.show(message, title, 'error', duration);
+  }
+
+  static warning(message, title = 'Warning', duration = 5000) {
+    return Toast.show(message, title, 'warning', duration);
+  }
+
+  static info(message, title = 'Info', duration = 4000) {
+    return Toast.show(message, title, 'info', duration);
+  }
+
+  // Get icon for toast type
+  static getIcon(type) {
+    const icons = {
+      success: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>`,
+      error: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="15" y1="9" x2="9" y2="15"></line>
+        <line x1="9" y1="9" x2="15" y2="15"></line>
+      </svg>`,
+      warning: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>`,
+      info: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="16" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+      </svg>`
+    };
+    return icons[type] || icons.info;
   }
 }
 
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = Utils;
+  module.exports = { Utils, Toast };
 }
 
-// Also expose as global for backward compatibility
+// Also expose as globals for backward compatibility
 if (typeof window !== 'undefined') {
   window.Utils = Utils;
+  window.Toast = Toast;
 }

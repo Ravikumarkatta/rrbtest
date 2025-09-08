@@ -301,7 +301,7 @@ window.loadTestFile = async function(id) {
     console.log('Loaded test file:', file.file_name, 'with', questions.length, 'questions');
     
   } catch (error) {
-    alert('Failed to load test file: ' + error.message);
+    Utils.showError('Failed to load test file: ' + error.message);
   }
 };
 
@@ -319,7 +319,7 @@ window.deleteTestFile = async function(id) {
     app.refreshTestFileList();
     
   } catch (error) {
-    alert('Failed to delete test file: ' + error.message);
+    Utils.showError('Failed to delete test file: ' + error.message);
   }
 };
 

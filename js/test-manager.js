@@ -1049,7 +1049,7 @@ class TestManager {
       this.viewManager.showView('result');
     } catch (error) {
       console.error('Submit test error:', error);
-      alert('Failed to submit test. Please try again.');
+      Utils.showError('Failed to submit test. Please try again.');
     }
   }
 
@@ -2236,7 +2236,7 @@ class TestManager {
   
   showJumpToQuestionModal() {
       console.log("Jump to question modal not implemented yet.");
-      alert("Jump to question functionality will be added in a future update!");
+      Utils.showInfo("Jump to question functionality will be added in a future update!");
   }
 }
 

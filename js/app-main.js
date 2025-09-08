@@ -992,6 +992,9 @@ class MockTestApp {
           statusElement.innerHTML = `<div class="status-message success">✅ Successfully loaded ${result.count} questions from ${fileExtension.toUpperCase()} file</div>`;
         }
 
+        // Show toast notification
+        Utils.showSuccess(`Successfully loaded ${result.count} questions from ${fileExtension.toUpperCase()} file`);
+
         // Save to cloud if enabled and API is available
         if (saveToCloud && window.MockTestAPI) {
           try {
@@ -1002,6 +1005,9 @@ class MockTestApp {
             if (statusElement) {
               statusElement.innerHTML += `<div class="status-message success">💾 Saved to cloud database with ID: ${savedFile.id}</div>`;
             }
+            
+            // Show toast notification for cloud save
+            Utils.showSuccess(`Saved to cloud database with ID: ${savedFile.id}`);
             
             // Refresh file list if browse tab is active
             if (document.getElementById('browse-content')?.classList.contains('active')) {
@@ -1377,8 +1383,7 @@ class MockTestApp {
 
   // Show error message
   showError(message) {
-    // Simple error display - you can enhance this
-    alert(message);
+    Utils.showError(message);
     console.error(message);
   }
 
@@ -1451,6 +1456,9 @@ window.loadTestFile = async function(id) {
         statusElement.classList.add('success');
         statusElement.innerHTML = `<div class="status-message success">✅ Successfully loaded "${fileData.file_name}" with ${questions.length} questions</div>`;
       }
+
+      // Show toast notification
+      Utils.showSuccess(`Successfully loaded "${fileData.file_name}" with ${questions.length} questions`);
 
       // Switch to upload tab to show status
       if (window.app.switchTab) {
@@ -1535,6 +1543,9 @@ window.deleteTestFile = async function(id) {
       }, 3000);
     }
     
+    // Show toast notification
+    Utils.showSuccess('Test file deleted successfully');
+    
   } catch (error) {
     console.error('Failed to delete test file:', error);
     const statusElement = document.getElementById('json-status');
@@ -1568,18 +1579,18 @@ window.renameTestFile = async function(id, currentName) {
   // Basic validation
   const trimmedName = newName.trim();
   if (trimmedName.length < 1) {
-    alert('File name cannot be empty.');
+    Utils.showError('File name cannot be empty.');
     return;
   }
   if (trimmedName.length > 255) {
-    alert('File name is too long. Please use a shorter name.');
+    Utils.showError('File name is too long. Please use a shorter name.');
     return;
   }
   
   // Check for invalid characters (basic check)
   const invalidChars = /[<>:"/\\|?*]/;
   if (invalidChars.test(trimmedName)) {
-    alert('File name contains invalid characters. Please avoid: < > : " / \\ | ? *');
+    Utils.showError('File name contains invalid characters. Please avoid: < > : " / \\ | ? *');
     return;
   }
   
@@ -1613,6 +1624,9 @@ window.renameTestFile = async function(id, currentName) {
         statusElement.classList.add('hidden');
       }, 3000);
     }
+    
+    // Show toast notification
+    Utils.showSuccess(`Test file renamed to "${trimmedName}"`);
     
   } catch (error) {
     console.error('Failed to rename test file:', error);
@@ -1705,6 +1719,9 @@ window.downloadTestFile = async function(id, fileName) {
         statusElement.classList.add('hidden');
       }, 3000);
     }
+    
+    // Show toast notification
+    Utils.showSuccess(`Downloaded "${downloadFileName}" successfully`);
     
   } catch (error) {
     console.error('Failed to download test file:', error);
