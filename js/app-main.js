@@ -134,6 +134,42 @@ class MockTestApp {
       console.warn('JSON file input element not found');
     }
 
+    // File management tabs
+    const uploadTab = document.getElementById('upload-tab');
+    const browseTab = document.getElementById('browse-tab');
+    if (uploadTab) {
+      uploadTab.addEventListener('click', () => this.switchTab('upload'));
+    }
+    if (browseTab) {
+      browseTab.addEventListener('click', () => this.switchTab('browse'));
+    }
+
+    // File browser controls
+    const refreshFilesBtn = document.getElementById('refresh-files');
+    if (refreshFilesBtn) {
+      refreshFilesBtn.addEventListener('click', () => this.refreshFileList());
+    }
+
+    const fileSearch = document.getElementById('file-search');
+    if (fileSearch) {
+      fileSearch.addEventListener('input', (e) => this.handleFileSearch(e));
+    }
+
+    const subjectFilter = document.getElementById('subject-filter');
+    if (subjectFilter) {
+      subjectFilter.addEventListener('change', (e) => this.handleSubjectFilter(e));
+    }
+
+    // Pagination controls
+    const prevPageBtn = document.getElementById('prev-page');
+    const nextPageBtn = document.getElementById('next-page');
+    if (prevPageBtn) {
+      prevPageBtn.addEventListener('click', () => this.handlePagination('prev'));
+    }
+    if (nextPageBtn) {
+      nextPageBtn.addEventListener('click', () => this.handlePagination('next'));
+    }
+
     // Download example JSON button
     const downloadExampleBtn = document.getElementById('download-example-btn');
     if (downloadExampleBtn) {
@@ -847,6 +883,7 @@ class MockTestApp {
   async handleJSONUpload(event) {
     const file = event.target.files[0];
     const statusElement = document.getElementById('json-status');
+    const saveToCloud = document.getElementById('save-to-cloud')?.checked || false;
     
     if (!file) {
       if (statusElement) {
@@ -875,7 +912,11 @@ class MockTestApp {
     try {
       if (statusElement) {
         statusElement.classList.remove('hidden', 'success', 'error');
-        statusElement.innerHTML = `<div class="loading">Processing ${fileExtension.toUpperCase()} file...</div>`;
+        statusElement.classList.add('loading');
+        statusElement.innerHTML = `<div class="loading-message">
+          <div class="loading-spinner"></div>
+          <span>Processing ${fileExtension.toUpperCase()} file...</span>
+        </div>`;
       }
 
       const result = await this.questionManager.loadFromFile(file);
@@ -884,8 +925,32 @@ class MockTestApp {
         this.stateManager.setCustomQuestions(result.questions);
 
         if (statusElement) {
+          statusElement.classList.remove('loading');
           statusElement.classList.add('success');
-          statusElement.innerHTML = `<div>✅ Successfully loaded ${result.count} questions from ${fileExtension.toUpperCase()} file</div>`;
+          statusElement.innerHTML = `<div class="status-message success">✅ Successfully loaded ${result.count} questions from ${fileExtension.toUpperCase()} file</div>`;
+        }
+
+        // Save to cloud if enabled and API is available
+        if (saveToCloud && window.MockTestAPI) {
+          try {
+            const api = new window.MockTestAPI();
+            const fileJson = await this.prepareFileForUpload(file, result);
+            const savedFile = await api.addTestFile(file.name, fileJson);
+            
+            if (statusElement) {
+              statusElement.innerHTML += `<div class="status-message success">💾 Saved to cloud database with ID: ${savedFile.id}</div>`;
+            }
+            
+            // Refresh file list if browse tab is active
+            if (document.getElementById('browse-content')?.classList.contains('active')) {
+              this.refreshFileList();
+            }
+          } catch (cloudError) {
+            console.warn('Failed to save to cloud:', cloudError);
+            if (statusElement) {
+              statusElement.innerHTML += `<div class="status-message warning">⚠️ Loaded locally but failed to save to cloud: ${cloudError.message}</div>`;
+            }
+          }
         }
 
         this.viewManager.updateQuestionCount(this.stateManager.getState());
@@ -894,9 +959,10 @@ class MockTestApp {
       console.error('File upload error:', error);
       
       if (statusElement) {
+        statusElement.classList.remove('loading');
         statusElement.classList.add('error');
         statusElement.innerHTML = `
-          <div>❌ Failed to load ${fileExtension.toUpperCase()} file:</div>
+          <div class="status-message error">❌ Failed to load ${fileExtension.toUpperCase()} file:</div>
           <ul><li>${error.error || error.message}</li></ul>
         `;
       }
@@ -909,6 +975,263 @@ class MockTestApp {
       }
       this.viewManager.updateQuestionCount(this.stateManager.getState());
     }
+  }
+
+  // Prepare file data for upload to backend
+  async prepareFileForUpload(file, result) {
+    const reader = new FileReader();
+    return new Promise((resolve, reject) => {
+      reader.onload = (event) => {
+        try {
+          const rawData = JSON.parse(event.target.result);
+          
+          // Transform to the backend expected format
+          const fileJson = {
+            section: rawData.section || rawData.metadata?.subject || 'Unknown Section',
+            total_questions: rawData.total_questions || rawData.questions?.length || 0,
+            time_limit: rawData.time_limit || rawData.metadata?.time_limit || 60,
+            target_score: rawData.target_score || rawData.metadata?.target_score || '75%',
+            questions: rawData.questions?.map(q => ({
+              id: q.id || `q${Math.random().toString(36).substr(2, 9)}`,
+              text: q.text || q.question,
+              options: q.options || [],
+              correct_answer: q.correct_answer || q.correctAnswer,
+              points: q.points || 10,
+              category: q.category || q.topic || 'General',
+              difficulty: q.difficulty || 'medium',
+              time_limit: q.time_limit || q.timeLimit || 60,
+              solution: q.solution || ''
+            })) || [],
+            scoring: rawData.scoring || rawData.scoring_rules || {
+              total_points: (rawData.questions?.length || 0) * 10,
+              passing_score: Math.round((rawData.questions?.length || 0) * 6),
+              grade_scale: {
+                "A": "80-100",
+                "B": "60-79", 
+                "C": "40-59",
+                "F": "0-39"
+              }
+            },
+            instructions: rawData.instructions || rawData.metadata?.instructions || {
+              time_management: "Manage your time effectively",
+              difficulty_distribution: { "easy": "20", "medium": "60", "hard": "20" },
+              category_distribution: {}
+            }
+          };
+          
+          resolve(fileJson);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsText(file);
+    });
+  }
+
+  // Switch between upload and browse tabs
+  switchTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.tab-button').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    document.getElementById(`${tabName}-tab`)?.classList.add('active');
+
+    // Update tab content
+    document.querySelectorAll('.tab-content').forEach(content => {
+      content.classList.remove('active');
+    });
+    document.getElementById(`${tabName}-content`)?.classList.add('active');
+
+    // Load files if switching to browse tab
+    if (tabName === 'browse') {
+      this.refreshFileList();
+    }
+  }
+
+  // Refresh file list from backend
+  async refreshFileList() {
+    const fileList = document.getElementById('file-list');
+    const subjectFilter = document.getElementById('subject-filter');
+    
+    if (!fileList) return;
+
+    try {
+      fileList.innerHTML = `<div class="loading-message">
+        <div class="loading-spinner"></div>
+        <span>Loading saved files...</span>
+      </div>`;
+
+      const api = new window.MockTestAPI();
+      const response = await api.listTestFiles(50, 0);
+      
+      if (!response.files || response.files.length === 0) {
+        fileList.innerHTML = `<div class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14,2 14,8 20,8"></polyline>
+          </svg>
+          <p>No test files found.</p>
+          <p>Upload your first test file using the "Upload New File" tab.</p>
+        </div>`;
+        return;
+      }
+
+      // Update subject filter
+      this.updateSubjectFilter(response.files);
+
+      // Store files for filtering
+      this.allFiles = response.files;
+      this.displayFiles(response.files);
+
+    } catch (error) {
+      console.error('Failed to load files:', error);
+      fileList.innerHTML = `<div class="error-message">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="15" y1="9" x2="9" y2="15"></line>
+          <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+        <span>Failed to load files: ${error.message}</span>
+      </div>`;
+    }
+  }
+
+  // Display files in the list
+  displayFiles(files) {
+    const fileList = document.getElementById('file-list');
+    
+    fileList.innerHTML = files.map(file => {
+      const uploadDate = new Date(file.uploaded_at).toLocaleDateString();
+      const fileJson = file.file_json || {};
+      const subject = fileJson.section || 'Unknown Subject';
+      const questionCount = fileJson.total_questions || 0;
+      
+      return `
+        <div class="file-item" data-file-id="${file.id}">
+          <div class="file-info">
+            <h4 class="file-name">${file.file_name}</h4>
+            <div class="file-details">
+              <div class="file-detail">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                </svg>
+                <span>${subject}</span>
+              </div>
+              <div class="file-detail">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path>
+                </svg>
+                <span>${questionCount} questions</span>
+              </div>
+              <div class="file-detail">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <span>${uploadDate}</span>
+              </div>
+            </div>
+          </div>
+          <div class="file-actions">
+            <button class="file-action-btn load-btn" onclick="window.loadTestFile('${file.id}')" title="Load this test file">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17,8 12,3 7,8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              Load
+            </button>
+            <button class="file-action-btn rename-btn" onclick="window.renameTestFile('${file.id}', '${file.file_name}')" title="Rename this file">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+              </svg>
+              Rename
+            </button>
+            <button class="file-action-btn delete-btn" onclick="window.deleteTestFile('${file.id}')" title="Delete this file">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3,6 5,6 21,6"></polyline>
+                <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+              </svg>
+              Delete
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Update subject filter dropdown
+  updateSubjectFilter(files) {
+    const subjectFilter = document.getElementById('subject-filter');
+    if (!subjectFilter) return;
+
+    const subjects = new Set();
+    files.forEach(file => {
+      const subject = file.file_json?.section || 'Unknown Subject';
+      subjects.add(subject);
+    });
+
+    const currentValue = subjectFilter.value;
+    subjectFilter.innerHTML = '<option value="">All Subjects</option>' +
+      Array.from(subjects).sort().map(subject => 
+        `<option value="${subject}">${subject}</option>`
+      ).join('');
+    
+    // Restore previous selection if it still exists
+    if (currentValue && subjects.has(currentValue)) {
+      subjectFilter.value = currentValue;
+    }
+  }
+
+  // Handle file search
+  handleFileSearch(event) {
+    const query = event.target.value.toLowerCase();
+    this.filterAndDisplayFiles();
+  }
+
+  // Handle subject filter
+  handleSubjectFilter(event) {
+    this.filterAndDisplayFiles();
+  }
+
+  // Filter and display files based on search and filter
+  filterAndDisplayFiles() {
+    if (!this.allFiles) return;
+
+    const searchQuery = document.getElementById('file-search')?.value.toLowerCase() || '';
+    const subjectFilter = document.getElementById('subject-filter')?.value || '';
+
+    const filteredFiles = this.allFiles.filter(file => {
+      const fileName = file.file_name.toLowerCase();
+      const subject = file.file_json?.section || 'Unknown Subject';
+      const chapter = file.file_json?.instructions?.category_distribution 
+        ? Object.keys(file.file_json.instructions.category_distribution).join(' ').toLowerCase()
+        : '';
+
+      const matchesSearch = !searchQuery || 
+        fileName.includes(searchQuery) || 
+        subject.toLowerCase().includes(searchQuery) ||
+        chapter.includes(searchQuery);
+
+      const matchesSubject = !subjectFilter || subject === subjectFilter;
+
+      return matchesSearch && matchesSubject;
+    });
+
+    this.displayFiles(filteredFiles);
+  }
+
+  // Handle pagination (placeholder for future implementation)
+  handlePagination(direction) {
+    console.log('Pagination:', direction);
+    // TODO: Implement pagination logic
   }
 
   // Download example JSON
@@ -1003,6 +1326,139 @@ document.addEventListener('DOMContentLoaded', () => {
     console.error('Failed to initialize app:', error);
   });
 });
+
+// Global functions for file management
+window.loadTestFile = async function(id) {
+  try {
+    const statusElement = document.getElementById('json-status');
+    if (statusElement) {
+      statusElement.classList.remove('hidden', 'error');
+      statusElement.classList.add('loading');
+      statusElement.innerHTML = `<div class="loading-message">
+        <div class="loading-spinner"></div>
+        <span>Loading test file...</span>
+      </div>`;
+    }
+
+    const api = new window.MockTestAPI();
+    const fileData = await api.fetchTestFile(id);
+    
+    // Parse and load questions using enhanced question manager
+    const manager = new EnhancedQuestionManager();
+    const questions = manager.parseQuestions(fileData.file_json);
+    
+    // Load into app
+    if (window.app && window.app.stateManager) {
+      window.app.stateManager.setCustomQuestions(questions);
+      window.app.stateManager.updateState({ 
+        questionSource: 'database',
+        currentFileId: id,
+        currentFileName: fileData.file_name
+      });
+      
+      if (window.app.viewManager) {
+        window.app.viewManager.updateQuestionCount(window.app.stateManager.getState());
+      }
+      
+      if (statusElement) {
+        statusElement.classList.remove('loading');
+        statusElement.classList.add('success');
+        statusElement.innerHTML = `<div class="status-message success">✅ Successfully loaded "${fileData.file_name}" with ${questions.length} questions</div>`;
+      }
+
+      // Switch to upload tab to show status
+      if (window.app.switchTab) {
+        window.app.switchTab('upload');
+      }
+    }
+    
+  } catch (error) {
+    console.error('Failed to load test file:', error);
+    const statusElement = document.getElementById('json-status');
+    if (statusElement) {
+      statusElement.classList.remove('loading');
+      statusElement.classList.add('error');
+      statusElement.innerHTML = `<div class="status-message error">❌ Failed to load test file: ${error.message}</div>`;
+    }
+  }
+};
+
+window.deleteTestFile = async function(id) {
+  if (!confirm('Are you sure you want to delete this test file? This action cannot be undone.')) {
+    return;
+  }
+  
+  try {
+    const api = new window.MockTestAPI();
+    await api.deleteTestFile(id);
+    
+    // Refresh the file list
+    if (window.app && window.app.refreshFileList) {
+      window.app.refreshFileList();
+    }
+    
+    // Show success message
+    const statusElement = document.getElementById('json-status');
+    if (statusElement) {
+      statusElement.classList.remove('hidden', 'error', 'loading');
+      statusElement.classList.add('success');
+      statusElement.innerHTML = `<div class="status-message success">✅ Test file deleted successfully</div>`;
+      
+      // Hide message after 3 seconds
+      setTimeout(() => {
+        statusElement.classList.add('hidden');
+      }, 3000);
+    }
+    
+  } catch (error) {
+    console.error('Failed to delete test file:', error);
+    const statusElement = document.getElementById('json-status');
+    if (statusElement) {
+      statusElement.classList.remove('hidden', 'loading');
+      statusElement.classList.add('error');
+      statusElement.innerHTML = `<div class="status-message error">❌ Failed to delete test file: ${error.message}</div>`;
+    }
+  }
+};
+
+window.renameTestFile = async function(id, currentName) {
+  const newName = prompt('Enter new name for the test file:', currentName);
+  if (!newName || newName === currentName) {
+    return;
+  }
+  
+  try {
+    const api = new window.MockTestAPI();
+    await api.renameTestFile(id, newName);
+    
+    // Refresh the file list
+    if (window.app && window.app.refreshFileList) {
+      window.app.refreshFileList();
+    }
+    
+    // Show success message
+    const statusElement = document.getElementById('json-status');
+    if (statusElement) {
+      statusElement.classList.remove('hidden', 'error', 'loading');
+      statusElement.classList.add('success');
+      statusElement.innerHTML = `<div class="status-message success">✅ Test file renamed to "${newName}"</div>`;
+      
+      // Hide message after 3 seconds
+      setTimeout(() => {
+        statusElement.classList.add('hidden');
+      }, 3000);
+    }
+    
+  } catch (error) {
+    console.error('Failed to rename test file:', error);
+    const statusElement = document.getElementById('json-status');
+    if (statusElement) {
+      statusElement.classList.remove('hidden', 'loading');
+      statusElement.classList.add('error');
+      statusElement.innerHTML = `<div class="status-message error">❌ Failed to rename test file: ${error.message}</div>`;
+    }
+  }
+};
 
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {

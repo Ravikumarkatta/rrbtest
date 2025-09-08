@@ -150,6 +150,7 @@ class EnhancedQuestionManager {
         throw new Error('Invalid JSON: Data must be an object');
       }
       
+      // Support both new backend format and legacy format
       if (!data.questions || !Array.isArray(data.questions)) {
         throw new Error('Invalid JSON: "questions" property must be an array');
       }
@@ -158,9 +159,13 @@ class EnhancedQuestionManager {
         throw new Error('Invalid JSON: Questions array cannot be empty');
       }
       
-      // Validate metadata if present
+      // Validate metadata if present (support both metadata and root-level fields)
       if (data.metadata) {
         const metadataErrors = this.validateMetadata(data.metadata);
+        errors.push(...metadataErrors);
+      } else if (data.section || data.total_questions) {
+        // Validate root-level metadata (backend format)
+        const metadataErrors = this.validateRootMetadata(data);
         errors.push(...metadataErrors);
       }
       
@@ -178,10 +183,9 @@ class EnhancedQuestionManager {
       }
       
       // Validate consistency between metadata and questions
-      if (data.metadata && data.metadata.total_questions) {
-        if (data.metadata.total_questions !== data.questions.length) {
-          errors.push(`Metadata total_questions (${data.metadata.total_questions}) doesn't match actual questions count (${data.questions.length})`);
-        }
+      const totalQuestions = data.total_questions || data.metadata?.total_questions;
+      if (totalQuestions && totalQuestions !== data.questions.length) {
+        errors.push(`Metadata total_questions (${totalQuestions}) doesn't match actual questions count (${data.questions.length})`);
       }
       
     } catch (error) {
@@ -192,6 +196,25 @@ class EnhancedQuestionManager {
       isValid: errors.length === 0,
       errors: errors
     };
+  }
+
+  // Validate root-level metadata (backend format)
+  validateRootMetadata(data) {
+    const errors = [];
+    
+    if (!data.section) {
+      errors.push('Root metadata must include section');
+    }
+    
+    if (data.total_questions && typeof data.total_questions !== 'number') {
+      errors.push('total_questions must be a number');
+    }
+    
+    if (data.time_limit && typeof data.time_limit !== 'number') {
+      errors.push('time_limit must be a number');
+    }
+    
+    return errors;
   }
 
   // Validate metadata structure
@@ -290,9 +313,21 @@ class EnhancedQuestionManager {
       throw new Error(`Validation failed:\n${validation.errors.join('\n')}`);
     }
     
-    // Store metadata if present
-    this.metadata = data.metadata || {};
-    this.scoringRules = data.scoring_rules || {};
+    // Store metadata - handle both formats
+    if (data.metadata) {
+      this.metadata = data.metadata;
+    } else {
+      // Backend format with root-level metadata
+      this.metadata = {
+        title: data.section || 'Test',
+        subject: data.section || 'Unknown',
+        total_questions: data.total_questions,
+        time_limit: data.time_limit,
+        target_score: data.target_score
+      };
+    }
+    
+    this.scoringRules = data.scoring_rules || data.scoring || {};
     this.gradeScale = data.grade_scale || {};
     
     // Parse questions with enhanced properties
