@@ -1,14 +1,21 @@
 const { neon } = require('@neondatabase/serverless');
-require('dotenv').config();
 
 class DatabaseConnection {
   constructor() {
-    if (process.env.NODE_ENV === 'test' || !process.env.NEON_DATABASE_URL) {
-      // Use mock for testing
-      this.sql = this.mockSql;
-    } else {
-      this.sql = neon(process.env.NEON_DATABASE_URL);
+    this._sql = null;
+  }
+
+  get sql() {
+    // Lazy initialization for serverless environments
+    if (!this._sql) {
+      if (process.env.NODE_ENV === 'test' || !process.env.NEON_DATABASE_URL) {
+        // Use mock for testing
+        this._sql = this.mockSql;
+      } else {
+        this._sql = neon(process.env.NEON_DATABASE_URL);
+      }
     }
+    return this._sql;
   }
 
   async mockSql(text, params = []) {

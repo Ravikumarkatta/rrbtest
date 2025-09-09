@@ -1,24 +1,19 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/server.js",
-      "use": "@vercel/node"
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs18.x"
     }
-  ],
+  },
   "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/server.js"
-    },
     {
       "src": "/(.*)",
       "dest": "/$1"
     }
   ],
   "env": {
-    "NEON_DATABASE_URL":"postgresql://neondb_owner:npg_RA6CK9XmoTfE@ep-rapid-voice-a1gewv3h-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require",
+    "NEON_DATABASE_URL": "@neon_database_url",
     "NODE_ENV": "production",
-    "ALLOWED_ORIGINS": "https://rrbtest.vercel.app"
+    "ALLOWED_ORIGINS": "@allowed_origins"
   }
 }
