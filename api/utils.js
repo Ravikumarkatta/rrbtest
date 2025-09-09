@@ -73,25 +73,62 @@ function validateMethod(req, res, allowedMethods) {
  * Parse request body for POST/PATCH requests
  */
 async function parseRequestBody(req) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     if (req.method === 'GET' || req.method === 'DELETE') {
       resolve({});
       return;
     }
     
+    // Handle case where body is already parsed
+    if (req.body) {
+      resolve(req.body);
+      return;
+    }
+    
     let body = '';
+    let hasError = false;
+    
     req.on('data', chunk => {
-      body += chunk.toString();
+      if (!hasError) {
+        body += chunk.toString();
+      }
+    });
+    
+    req.on('error', (error) => {
+      hasError = true;
+      console.error('Request body parsing error:', error);
+      resolve({});
     });
     
     req.on('end', () => {
+      if (hasError) {
+        resolve({});
+        return;
+      }
+      
       try {
-        const parsed = body ? JSON.parse(body) : {};
+        if (!body || body.trim() === '') {
+          resolve({});
+          return;
+        }
+        
+        const parsed = JSON.parse(body);
         resolve(parsed);
       } catch (error) {
+        console.error('JSON parsing error:', error);
+        console.error('Body content:', body.substring(0, 200));
         resolve({});
       }
     });
+    
+    // Timeout after 10 seconds
+    setTimeout(() => {
+      if (!hasError) {
+        hasError = true;
+        console.error('Request body parsing timeout');
+        resolve({});
+      }
+    }, 10000);
   });
 }
 

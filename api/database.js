@@ -3,6 +3,7 @@ const { neon } = require('@neondatabase/serverless');
 class DatabaseConnection {
   constructor() {
     this._sql = null;
+    this._connectionTested = false;
   }
 
   get sql() {
@@ -10,7 +11,7 @@ class DatabaseConnection {
     if (!this._sql) {
       if (process.env.NODE_ENV === 'test') {
         // Use mock for automated tests only
-        this._sql = this.mockSql;
+        this._sql = this.mockSql.bind(this);
       } else {
         if (!process.env.NEON_DATABASE_URL) {
           // Fail fast: environment required for DB operations
@@ -43,10 +44,29 @@ class DatabaseConnection {
 
   async query(text, params = []) {
     try {
-      const result = await this.sql(text, params);
+      // Ensure connection is tested first
+      if (!this._connectionTested && process.env.NODE_ENV !== 'test') {
+        console.log('Testing database connection...');
+        await this.testConnection();
+        this._connectionTested = true;
+      }
+
+      // For neon, we need to use the sql function directly with parameters
+      let result;
+      if (params && params.length > 0) {
+        // Use parameterized query
+        result = await this.sql(text, params);
+      } else {
+        // Use template literal for queries without parameters
+        result = await this.sql([text]);
+      }
+      
+      console.log(`Query executed: ${text.substring(0, 100)}... with ${params.length} params`);
       return result;
     } catch (error) {
       console.error('Database query error:', error);
+      console.error('Query:', text);
+      console.error('Params:', params);
       throw error;
     }
   }
@@ -56,10 +76,17 @@ class DatabaseConnection {
       if (process.env.NODE_ENV === 'test') {
         return true;
       }
+      
+      console.log('Testing database connection with URL:', process.env.NEON_DATABASE_URL ? 'Set' : 'Not set');
       const result = await this.sql`SELECT 1 as test`;
+      console.log('Database connection test successful:', result);
       return result && result.length > 0;
     } catch (error) {
       console.error('Database connection test failed:', error);
+      console.error('Environment variables:', {
+        NEON_DATABASE_URL: process.env.NEON_DATABASE_URL ? 'Set' : 'Not set',
+        NODE_ENV: process.env.NODE_ENV
+      });
       return false;
     }
   }

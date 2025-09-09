@@ -6,6 +6,13 @@ const { validateMethod, sendJsonResponse, sendErrorResponse } = require('./utils
  * GET /api/health
  */
 module.exports = async function handler(req, res) {
+  console.log('Health check requested');
+  console.log('Environment variables:', {
+    NODE_ENV: process.env.NODE_ENV,
+    NEON_DATABASE_URL: process.env.NEON_DATABASE_URL ? 'Set' : 'Not set',
+    ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || 'Not set'
+  });
+
   // Validate HTTP method
   if (!validateMethod(req, res, ['GET'])) {
     return;
@@ -14,15 +21,28 @@ module.exports = async function handler(req, res) {
   try {
     const isHealthy = await db.testConnection();
     
-    sendJsonResponse(res, req, {
+    const healthData = {
       status: isHealthy ? 'healthy' : 'unhealthy',
       timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV || 'development'
-    });
+      environment: {
+        nodeEnv: process.env.NODE_ENV || 'development',
+        neonDbUrl: process.env.NEON_DATABASE_URL ? 'configured' : 'missing',
+        allowedOrigins: process.env.ALLOWED_ORIGINS ? 'configured' : 'missing'
+      },
+      database: {
+        connected: isHealthy,
+        driver: '@neondatabase/serverless'
+      }
+    };
+
+    console.log('Health check result:', healthData);
+    sendJsonResponse(res, req, healthData);
   } catch (error) {
+    console.error('Health check error:', error);
     sendErrorResponse(res, req, {
       message: 'Health check failed',
-      error: error.message
+      error: error.message,
+      timestamp: new Date().toISOString()
     }, 500);
   }
 };
