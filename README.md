@@ -1,6 +1,26 @@
 # Mock Test Application - Complete Full-Stack Solution
 
-A comprehensive mock test application with Neon PostgreSQL database integration, cloud-based file management, and advanced analytics dashboard. Built with vanilla JavaScript, HTML, CSS, and Node.js serverless functions.
+A comprehensive mock test application with **Vercel serverless backend** and **Neon PostgreSQL database** integration, cloud-based file management, and advanced analytics dashboard. Built with vanilla JavaScript, HTML, CSS, and **Node.js serverless functions**.
+
+## 🏗️ Serverless Architecture
+
+### Backend: Vercel Serverless Functions
+- **Converted from Express.js** to individual serverless functions
+- **File-based routing** following Vercel conventions
+- **Optimized cold starts** with lazy database initialization
+- **Scalable and cost-effective** deployment
+
+### API Endpoints Structure
+```
+/api/
+├── health.js                         (Health check)
+├── test-files/
+│   ├── index.js                      (List/Upload files)
+│   ├── [id].js                       (Get/Update/Delete file)
+│   └── [id]/results.js               (File results)
+├── test-results/index.js             (Save results)
+└── dashboard/                        (Analytics endpoints)
+```
 
 ## 🚀 Key Features
 

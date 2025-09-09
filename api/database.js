@@ -18,10 +18,23 @@ class DatabaseConnection {
     return this._sql;
   }
 
-  async mockSql(text, params = []) {
-    // Mock implementation for testing
-    console.log('Mock SQL:', text, params);
-    return [];
+  async mockSql(strings, ...values) {
+    // Handle template literal syntax (sql`query`) and regular function calls
+    const query = Array.isArray(strings) ? strings.join('') : strings;
+    const params = Array.isArray(strings) ? values : (values.length > 0 ? values : []);
+    
+    console.log('Mock SQL:', query, params);
+    
+    // Return appropriate mock data based on query
+    if (query.includes('COUNT(*)')) {
+      return [{ count: 0 }];
+    } else if (query.includes('SELECT 1')) {
+      return [{ test: 1 }];
+    } else if (query.includes('SELECT id, file_name')) {
+      return []; // Empty array for test files
+    } else {
+      return [];
+    }
   }
 
   async query(text, params = []) {
@@ -40,7 +53,7 @@ class DatabaseConnection {
         return true;
       }
       const result = await this.sql`SELECT 1 as test`;
-      return result.length > 0;
+      return result && result.length > 0;
     } catch (error) {
       console.error('Database connection test failed:', error);
       return false;
