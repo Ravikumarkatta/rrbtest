@@ -247,3 +247,61 @@ For issues or questions:
 4. Review CORS configuration for frontend integration
 
 This serverless architecture provides better scalability, reduced costs, and improved performance compared to traditional server deployments.
+
+## ♻️ Local Development Scripts (Updated)
+
+To avoid the recursive invocation error (`vercel dev` calling itself), the `package.json` scripts were adjusted:
+
+```
+"scripts": {
+   "dev": "node scripts/local-preview.js",       # Static front-end preview only
+   "api:dev": "vercel dev",                     # Run serverless functions locally
+   "start": "node scripts/local-preview.js",    # Same as dev
+   "deploy": "vercel --prod"
+}
+```
+
+Usage:
+
+1. Frontend static preview (no API emulation):
+    ```bash
+    npm run dev
+    # Opens index.html via a lightweight static server (default port 5173)
+    ```
+2. Full stack (frontend + API functions): run two terminals:
+    ```bash
+    npm run api:dev   # Terminal 1 - launches Vercel serverless environment on port 3000
+    npm run dev       # Terminal 2 - static preview (if you need separate static hosting)
+    ```
+    Frontend JS should call `/api/...` which is handled by the Vercel dev server (port 3000). If opening index.html directly from Vercel dev, you can also skip the static preview server.
+
+Notes:
+* Do NOT create an npm script that calls `vercel dev` and then have Vercel itself configured to run that script; that causes recursion.
+* If you prefer, you can remove the static preview and just run `vercel dev` directly (it will also serve static assets).
+* The error `Function Runtimes must have a valid version` is resolved by ensuring `vercel.json` has:
+   ```json
+   {
+      "version": 2,
+      "functions": { "api/**/*.js": { "runtime": "nodejs18.x" } }
+   }
+   ```
+
+Troubleshooting checklist for local dev:
+1. Delete local link data if things act oddly: `rm -rf .vercel` then `vercel link`.
+2. Confirm only one place invokes `vercel dev` (direct terminal or a single npm script).
+3. Verify Node version >= 18 (`node -v`).
+4. Ensure environment variables exist in `.env.local` (Vercel CLI loads them if configured) or set them manually when testing APIs.
+
+### Static Asset Strategy (Option A Chosen)
+The project now uses a dedicated `public/` directory for all static assets (HTML, CSS, JS, component partials). We removed the legacy root `index.html` placeholder and root `index.js` so Vercel will always serve `public/index.html` via the route rule:
+
+```
+"routes": [
+   { "src": "/api/(.*)", "dest": "/api/$1" },
+   { "src": "/(.*)", "dest": "/public/$1" }
+]
+```
+
+API functions live under `api/` and are built with `@vercel/node`. Static files are handled by `@vercel/static`.
+
+If you ever migrate to a framework (Next.js, SvelteKit, etc.), remove the `builds` + `routes` block and adopt that framework's defaults.

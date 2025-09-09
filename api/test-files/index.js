@@ -15,11 +15,12 @@ module.exports = async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       // List test files
-      const { limit = '50', offset = '0' } = req.query || {};
-      
+      const { limit = '50', offset = '0', subject_id, chapter_id, subject, chapter } = req.query || {};
+      const filters = { subject_id, chapter_id, subject, chapter };
       const files = await testFileService.listTestFiles(
         parseInt(limit), 
-        parseInt(offset)
+        parseInt(offset),
+        filters
       );
       const total = await testFileService.getTestFileCount();
       
@@ -42,6 +43,12 @@ module.exports = async function handler(req, res) {
         return sendErrorResponse(res, req, {
           message: 'fileName and fileJson are required'
         }, 400);
+      }
+
+      // Allow client to pass subject_id/chapter_id directly in metadata
+      if (fileJson && fileJson.metadata) {
+        if (fileJson.metadata.subject_id) fileJson.metadata.subject_id = fileJson.metadata.subject_id;
+        if (fileJson.metadata.chapter_id) fileJson.metadata.chapter_id = fileJson.metadata.chapter_id;
       }
 
       const result = await testFileService.addTestFile(fileName, fileJson);

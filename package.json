@@ -2,19 +2,25 @@
   "name": "mocktest",
   "version": "1.0.0",
   "description": "Units & Measurements Mock Test with Neon Database Integration",
-  "main": "index.html",
+  "main": "",
   "scripts": {
-    "dev": "vercel dev",
+    "dev": "node dev-server.js",
+    "api:dev": "vercel dev --listen 3000",
+    "dev:alt": "vercel dev --listen 3100",
+    "clean": "bash scripts/clean.sh",
+    "rebuild": "bash scripts/clean.sh && vercel dev --listen 3000",
     "build": "echo 'Build complete - serverless functions ready'",
-    "start": "vercel dev",
+    "start": "node dev-server.js",
     "deploy": "vercel --prod"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.9.0",
+    "dotenv": "^17.2.2",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "vercel": "^33.0.0"
+    "@vercel/node": "^5.3.21",
+    "vercel": "^47.0.5"
   },
   "keywords": [
     "mock-test",
@@ -26,5 +32,4 @@
   ],
   "author": "",
   "license": "MIT"
-  
 }

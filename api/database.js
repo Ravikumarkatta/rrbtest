@@ -8,10 +8,14 @@ class DatabaseConnection {
   get sql() {
     // Lazy initialization for serverless environments
     if (!this._sql) {
-      if (process.env.NODE_ENV === 'test' || !process.env.NEON_DATABASE_URL) {
-        // Use mock for testing
+      if (process.env.NODE_ENV === 'test') {
+        // Use mock for automated tests only
         this._sql = this.mockSql;
       } else {
+        if (!process.env.NEON_DATABASE_URL) {
+          // Fail fast: environment required for DB operations
+          throw new Error('NEON_DATABASE_URL is not set. Set this environment variable to your Neon connection string.');
+        }
         this._sql = neon(process.env.NEON_DATABASE_URL);
       }
     }

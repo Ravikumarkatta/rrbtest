@@ -1,5 +1,31 @@
 const { v4: uuidv4 } = require('uuid');
 const db = require('./database');
+const fs = require('fs');
+const path = require('path');
+
+const LOCAL_TEST_FILES = path.join(__dirname, '..', 'data', 'local_test_files.json');
+
+function readLocalFiles() {
+  try {
+    if (!fs.existsSync(LOCAL_TEST_FILES)) return [];
+    const raw = fs.readFileSync(LOCAL_TEST_FILES, 'utf8');
+    return JSON.parse(raw || '[]');
+  } catch (err) {
+    console.warn('Failed to read local test files:', err.message);
+    return [];
+  }
+}
+
+function writeLocalFiles(list) {
+  try {
+    fs.mkdirSync(path.dirname(LOCAL_TEST_FILES), { recursive: true });
+    fs.writeFileSync(LOCAL_TEST_FILES, JSON.stringify(list, null, 2), 'utf8');
+    return true;
+  } catch (err) {
+    console.warn('Failed to write local test files:', err.message);
+    return false;
+  }
+}
 
 class TestFileService {
   /**
@@ -18,8 +44,14 @@ class TestFileService {
     const errors = [];
 
     // Check required top-level properties
+    // Allow either legacy 'section' or new metadata.subject
+    if (!fileJson.section) {
+      if (fileJson.metadata?.subject) {
+        fileJson.section = fileJson.metadata.subject; // backfill for uniformity
+      }
+    }
     if (!fileJson.section || typeof fileJson.section !== 'string') {
-      errors.push('Missing or invalid required "section" property (must be string)');
+      errors.push('Missing or invalid required "section" (or metadata.subject) property (must be string)');
     }
 
     if (!fileJson.total_questions || typeof fileJson.total_questions !== 'number' || fileJson.total_questions <= 0) {
@@ -88,39 +120,152 @@ class TestFileService {
    * Add a new test file
    */
   async addTestFile(fileName, fileJson) {
+    // Normalize subject/chapter if provided at root metadata from frontend selectors
+    let subjectId = null;
+    let chapterId = null;
+    if (fileJson && fileJson.metadata) {
+      if (fileJson.metadata.subject && !fileJson.section) {
+        fileJson.section = fileJson.metadata.subject; // ensure section set for existing queries
+      }
+      if (fileJson.metadata.chapter) {
+        fileJson.chapter = fileJson.metadata.chapter; // optional convenience
+      }
+    }
+
     const validation = this.validateTestFile(fileJson);
     if (!validation.isValid) {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
     }
 
     const id = uuidv4();
-    const query = `
-      INSERT INTO test_files (id, file_name, file_json)
-      VALUES ($1, $2, $3)
-      RETURNING *
-    `;
-    
-    const result = await db.query(query, [id, fileName, JSON.stringify(fileJson)]);
-    return result[0];
+
+    // If no real DB configured, persist to local JSON file for dev
+    if (!process.env.NEON_DATABASE_URL) {
+      const list = readLocalFiles();
+      const entry = {
+        id,
+        file_name: fileName,
+        uploaded_at: new Date().toISOString(),
+        file_json: fileJson,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      list.unshift(entry);
+      writeLocalFiles(list);
+      return entry;
+    }
+
+    // When NEON is configured, try to find or create subject/chapter rows and store their UUIDs
+    try {
+      // Subject upsert (find or create by name, case-insensitive)
+      if (fileJson?.metadata?.subject) {
+        const subjName = String(fileJson.metadata.subject).trim();
+        if (subjName) {
+          const found = await db.query(`SELECT id FROM subjects WHERE lower(name) = lower($1) LIMIT 1`, [subjName]);
+          if (found && found.length > 0) {
+            subjectId = found[0].id;
+          } else {
+            const slug = subjName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            const ins = await db.query(`INSERT INTO subjects (id, name, slug, created_at, updated_at) VALUES (gen_random_uuid(), $1, $2, NOW(), NOW()) RETURNING id`, [subjName, slug]);
+            subjectId = ins[0].id;
+          }
+        }
+      }
+
+      // Chapter upsert under subject
+      if (fileJson?.metadata?.chapter && subjectId) {
+        const chapName = String(fileJson.metadata.chapter).trim();
+        if (chapName) {
+          const foundC = await db.query(`SELECT id FROM chapters WHERE subject_id = $1 AND lower(name) = lower($2) LIMIT 1`, [subjectId, chapName]);
+          if (foundC && foundC.length > 0) {
+            chapterId = foundC[0].id;
+          } else {
+            const slug = chapName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            const insC = await db.query(`INSERT INTO chapters (id, subject_id, name, slug, created_at, updated_at) VALUES (gen_random_uuid(), $1, $2, $3, NOW(), NOW()) RETURNING id`, [subjectId, chapName, slug]);
+            chapterId = insC[0].id;
+          }
+        }
+      }
+
+      const query = `
+        INSERT INTO test_files (id, file_name, subject_id, chapter_id, file_json)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *
+      `;
+      const result = await db.query(query, [id, fileName, subjectId, chapterId, JSON.stringify(fileJson)]);
+      return result[0];
+    } catch (err) {
+      // If anything goes wrong with DB upsert, surface the error
+      throw err;
+    }
   }
 
   /**
    * List all test files
    */
-  async listTestFiles(limit = 50, offset = 0) {
-    const query = `
-      SELECT id, file_name, uploaded_at, 
+  async listTestFiles(limit = 50, offset = 0, filters = {}) {
+    // Filters may include: subject_id, chapter_id, subject (name), chapter (name)
+    const where = [];
+    const params = [];
+
+    if (filters.subject_id) {
+      params.push(filters.subject_id);
+      where.push(`subject_id = $${params.length}`);
+    } else if (filters.subject) {
+      params.push(String(filters.subject).toLowerCase());
+      where.push(`(lower(file_json->>'section') = $${params.length} OR subject_id IN (SELECT id FROM subjects WHERE lower(name) = $${params.length}))`);
+    }
+
+    if (filters.chapter_id) {
+      params.push(filters.chapter_id);
+      where.push(`chapter_id = $${params.length}`);
+    } else if (filters.chapter) {
+      params.push(String(filters.chapter).toLowerCase());
+      where.push(`(lower(file_json->>'chapter') = $${params.length} OR chapter_id IN (SELECT id FROM chapters WHERE lower(name) = $${params.length}))`);
+    }
+
+    // Build base query
+    let query = `
+      SELECT id, file_name, uploaded_at, subject_id, chapter_id,
              file_json->>'section' as section,
+             file_json->>'chapter' as chapter,
              file_json->>'total_questions' as total_questions,
              file_json->>'time_limit' as time_limit,
              file_json->>'target_score' as target_score,
              jsonb_array_length(file_json->'questions') as question_count
-      FROM test_files 
-      ORDER BY uploaded_at DESC 
-      LIMIT $1 OFFSET $2
-    `;
-    
-    const result = await db.query(query, [limit, offset]);
+      FROM test_files`
+    ;
+
+    if (where.length) {
+      query += '\n WHERE ' + where.join(' AND ');
+    }
+
+    query += `\n ORDER BY uploaded_at DESC`;
+
+    // Append limit/offset params
+    params.push(limit, offset);
+    query += `\n LIMIT $${params.length - 1} OFFSET $${params.length}`;
+
+    // Local fallback
+    if (!process.env.NEON_DATABASE_URL) {
+      const list = readLocalFiles();
+      const slice = list.slice(offset, offset + limit).map(row => ({
+        id: row.id,
+        file_name: row.file_name,
+        uploaded_at: row.uploaded_at,
+        section: (row.file_json && (row.file_json.section || row.file_json.metadata?.subject)) || '',
+        chapter: row.file_json?.chapter || '',
+        subject_id: row.subject_id || null,
+        chapter_id: row.chapter_id || null,
+        total_questions: (row.file_json && row.file_json.total_questions) || (row.file_json && (row.file_json.questions && row.file_json.questions.length)) || 0,
+        time_limit: (row.file_json && row.file_json.time_limit) || 0,
+        question_count: (row.file_json && row.file_json.questions && row.file_json.questions.length) || 0,
+        file_json: row.file_json
+      }));
+      return slice;
+    }
+
+    const result = await db.query(query, params);
     return result.map(row => ({
       ...row,
       total_questions: parseInt(row.total_questions) || 0,
@@ -132,6 +277,14 @@ class TestFileService {
    * Fetch a specific test file by ID
    */
   async fetchTestFile(id) {
+    // Local fallback
+    if (!process.env.NEON_DATABASE_URL) {
+      const list = readLocalFiles();
+      const found = list.find(f => f.id === id);
+      if (!found) throw new Error('Test file not found');
+      return found;
+    }
+
     const query = `
       SELECT * FROM test_files WHERE id = $1
     `;
@@ -148,6 +301,16 @@ class TestFileService {
    * Delete a test file by ID
    */
   async deleteTestFile(id) {
+    // Local fallback
+    if (!process.env.NEON_DATABASE_URL) {
+      const list = readLocalFiles();
+      const idx = list.findIndex(f => f.id === id);
+      if (idx === -1) throw new Error('Test file not found');
+      const removed = list.splice(idx, 1)[0];
+      writeLocalFiles(list);
+      return removed;
+    }
+
     const query = `
       DELETE FROM test_files WHERE id = $1 RETURNING *
     `;
