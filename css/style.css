@@ -313,12 +313,6 @@ body {
   padding: 0;
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: inherit;
-}
-
 /* Typography */
 h1,
 h2,
@@ -2110,6 +2104,7 @@ input[type="file"].form-control:focus {
 }
 
 .time-input[type=number] {
+  appearance: textfield;
   -moz-appearance: textfield;
 }
 
@@ -2241,7 +2236,7 @@ input[type="file"].form-control:focus {
 }
 
 .sidebar-stats h4 {
-  color: #8B5CF6;
+  color: #632fdb;
   font-size: 0.9rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
@@ -2294,7 +2289,7 @@ input[type="file"].form-control:focus {
 /* Dark Mode Support for PYQ */
 [data-theme="dark"] .pyq-info-panel {
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(168, 85, 247, 0.1));
-  border-color: rgba(139, 92, 246, 0.3);
+  border-color: rgba(139, 92,246, 0.3);
 }
 
 [data-theme="dark"] .pyq-year {
@@ -3294,13 +3289,6 @@ input[type="file"].form-control:focus {
   gap: var(--space-8);
 }
 
-@media (min-width: 768px) {
-  .start-button-container {
-    flex-direction: row;
-    justify-content: center;
-  }
-}
-
 /* ================================
    Toast Notification System
    ================================ */
@@ -3558,8 +3546,8 @@ input[type="file"].form-control:focus {
 }
 
 /* Dark mode improvements for mobile */
-[data-theme="dark"] @media (max-width: 480px) {
-  .test-header {
+@media (max-width: 480px) {
+  [data-theme="dark"] .test-header {
     background: var(--color-charcoal-800);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
@@ -3882,3 +3870,83 @@ input[type="file"].form-control:focus {
     padding: var(--space-8);
   }
 }
+
+/* ================================
+   Modernization overrides (appended)
+   - updates body font, primary buttons, and card visuals
+   - placed at end to safely override earlier rules
+   ================================ */
+
+body {
+  /* prefer a modern system font stack */
+  font-family: Inter, Roboto, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  color-scheme: light dark;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* stronger specificity to override earlier .btn--primary */
+.btn.btn--primary,
+button.btn--primary,
+a.btn--primary {
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+  color: var(--color-btn-primary-text) !important;
+  box-shadow: 0 10px 30px rgba(16,24,40,0.06);
+  transition: transform 200ms var(--ease-standard), box-shadow 220ms var(--ease-standard), filter 160ms var(--ease-standard);
+}
+
+.btn.btn--primary:hover,
+button.btn--primary:hover,
+a.btn--primary:hover {
+  transform: translateY(-3px);
+  filter: brightness(0.98);
+}
+
+.btn.btn--primary:active,
+button.btn--primary:active,
+a.btn--primary:active {
+  transform: translateY(0);
+  box-shadow: 0 6px 18px rgba(16,24,40,0.08);
+}
+
+/* modern card look */
+.card,
+.card__container {
+  border-radius: 14px;
+  border: 1px solid var(--color-card-border);
+  box-shadow: 0 10px 30px rgba(16,24,40,0.06);
+  transition: transform 220ms var(--ease-standard), box-shadow 220ms var(--ease-standard);
+}
+
+.card:hover,
+.card__container:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 48px rgba(16,24,40,0.08);
+}
+
+/* slightly larger base type for readability */
+html {
+  font-size: 15px; /* subtle bump to improve legibility */
+}
+
+/* Improve contrast for surface elements on dark mode when data-color-scheme used */
+[data-color-scheme="dark"] .card,
+[data-color-scheme="dark"] .card__container,
+[data-theme="dark"] .card,
+.dark-mode .card {
+  background: var(--color-surface);
+  border-color: rgba(255,255,255,0.04);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+/* Small utility: modern rounded buttons */
+.btn {
+  border-radius: 10px;
+}
+
+/* Accessibility: stronger focus ring */
+.btn:focus-visible,
+.form-control:focus {
+  box-shadow: 0 0 0 4px var(--color-focus-ring);
+}
+
+/* End modernization overrides */
