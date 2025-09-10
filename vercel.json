@@ -4,13 +4,6 @@
   "buildCommand": "",
   "devCommand": "",
   "installCommand": "npm install --registry=https://registry.npmjs.org/",
-  "functions": {
-    "api/**/*.js": {
-      "runtime": "nodejs18.x",
-      "memory": 256,
-      "maxDuration": 30
-    }
-  },
   "builds": [
     {
       "src": "api/**/*.js",
