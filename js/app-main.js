@@ -1211,18 +1211,11 @@ class MockTestApp {
     
     fileList.innerHTML = files.map(file => {
       const uploadDate = new Date(file.uploaded_at).toLocaleDateString();
-      const fileJson = file.file_json || {};
       
-      // Extract subject with fallbacks
-      const subject = fileJson.metadata?.subject || fileJson.section || 'Unknown Subject';
-      
-      // Extract chapter with fallbacks
-      const chapter = fileJson.metadata?.chapter || 
-                     (fileJson.instructions?.category_distribution ? Object.keys(fileJson.instructions.category_distribution)[0] : '') ||
-                     '';
-      
-      // Extract question count with fallbacks
-      const questionCount = fileJson.questions?.length || fileJson.total_questions || 0;
+      // Use API-provided metadata instead of extracting from file_json
+      const subject = file.metadata?.subject || file.section || 'Unknown Subject';
+      const chapter = file.metadata?.chapter || file.chapter || '';
+      const questionCount = file.question_count || 0;
       
       return `
         <div class="file-item" data-file-id="${file.id}">
@@ -1306,9 +1299,8 @@ class MockTestApp {
 
     const subjects = new Set();
     files.forEach(file => {
-      const fileJson = file.file_json || {};
-      // Use same extraction logic as display
-      const subject = fileJson.metadata?.subject || fileJson.section || 'Unknown Subject';
+      // Use API-provided metadata instead of extracting from file_json
+      const subject = file.metadata?.subject || file.section || 'Unknown Subject';
       subjects.add(subject);
     });
 
@@ -1344,15 +1336,14 @@ class MockTestApp {
 
     const filteredFiles = this.allFiles.filter(file => {
       const fileName = file.file_name.toLowerCase();
-      const subject = file.file_json?.section || 'Unknown Subject';
-      const chapter = file.file_json?.instructions?.category_distribution 
-        ? Object.keys(file.file_json.instructions.category_distribution).join(' ').toLowerCase()
-        : '';
+      // Use API-provided metadata instead of extracting from file_json
+      const subject = file.metadata?.subject || file.section || 'Unknown Subject';
+      const chapter = file.metadata?.chapter || file.chapter || '';
 
       const matchesSearch = !searchQuery || 
         fileName.includes(searchQuery) || 
         subject.toLowerCase().includes(searchQuery) ||
-        chapter.includes(searchQuery);
+        chapter.toLowerCase().includes(searchQuery);
 
       const matchesSubject = !subjectFilter || subject === subjectFilter;
 
