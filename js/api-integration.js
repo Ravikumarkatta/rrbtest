@@ -109,31 +109,32 @@ class MockTestAPI {
 
   // Dashboard API methods
   async getDashboardStatistics() {
-    return this.request('/dashboard/statistics');
+    return this.request('/dashboard?action=statistics');
   }
 
   async getResultsBySubject() {
-    return this.request('/dashboard/results-by-subject');
+    return this.request('/dashboard?action=results-by-subject');
   }
 
   async getResultsByChapter() {
-    return this.request('/dashboard/results-by-chapter');
+    return this.request('/dashboard?action=results-by-chapter');
   }
 
   async getRecentResults(limit = 20) {
-    return this.request(`/dashboard/recent-results?limit=${limit}`);
+    return this.request(`/dashboard?action=recent-results&limit=${limit}`);
   }
 
   async getFilteredResults(filters) {
     const params = new URLSearchParams();
+    params.append('action', 'results');
     Object.entries(filters).forEach(([key, value]) => {
       if (value) params.append(key, value);
     });
-    return this.request(`/dashboard/results?${params.toString()}`);
+    return this.request(`/dashboard?${params.toString()}`);
   }
 
   async getPerformanceTrends(days = 30) {
-    return this.request(`/dashboard/trends?days=${days}`);
+    return this.request(`/dashboard?action=trends&days=${days}`);
   }
 
   // Health check

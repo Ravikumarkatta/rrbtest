@@ -3,21 +3,7 @@
 
 class DashboardManager {
   constructor() {
-    if (typeof window.MockTestAPI === 'function') {
-      this.api = new MockTestAPI();
-    } else {
-      this.api = null;
-      console.warn('MockTestAPI not yet loaded; dashboard init will be deferred.');
-      setTimeout(() => {
-        if (!this.api && typeof window.MockTestAPI === 'function') {
-          this.api = new MockTestAPI();
-          if (!this._deferredStarted) {
-            this._deferredStarted = true;
-            this.init();
-          }
-        }
-      }, 100);
-    }
+    this.api = new MockTestAPI();
     this.subjectChart = null;
     this.trendsChart = null;
     this.apiAvailable = true; // Track API availability
@@ -108,7 +94,7 @@ class DashboardManager {
   // Load dashboard statistics
   async loadStatistics() {
     try {
-      const stats = await this.api.request('/dashboard/statistics');
+      const stats = await this.api.request('/dashboard?action=statistics');
       this.updateStatisticsDisplay(stats);
     } catch (error) {
       console.error('Failed to load statistics:', error);
@@ -135,7 +121,7 @@ class DashboardManager {
   // Load and display subject data
   async loadSubjectData() {
     try {
-      const subjectData = await this.api.request('/dashboard/results-by-subject');
+      const subjectData = await this.api.request('/dashboard?action=results-by-subject');
       this.updateSubjectTable(subjectData);
       this.updateSubjectChart(subjectData);
     } catch (error) {
@@ -242,7 +228,7 @@ class DashboardManager {
   // Load and display chapter data
   async loadChapterData() {
     try {
-      const chapterData = await this.api.request('/dashboard/results-by-chapter');
+      const chapterData = await this.api.request('/dashboard?action=results-by-chapter');
       this.updateChapterTable(chapterData);
     } catch (error) {
       console.error('Failed to load chapter data:', error);
@@ -277,7 +263,7 @@ class DashboardManager {
   // Load and display recent results
   async loadRecentResults() {
     try {
-      const recentData = await this.api.request('/dashboard/recent-results?limit=20');
+      const recentData = await this.api.request('/dashboard?action=recent-results&limit=20');
       this.updateRecentResultsTable(recentData);
     } catch (error) {
       console.error('Failed to load recent results:', error);
@@ -312,7 +298,7 @@ class DashboardManager {
   // Load and display performance trends
   async loadTrends() {
     try {
-      const trendsData = await this.api.request('/dashboard/trends?days=30');
+      const trendsData = await this.api.request('/dashboard?action=trends&days=30');
       this.updateTrendsChart(trendsData);
     } catch (error) {
       console.error('Failed to load trends:', error);
@@ -382,8 +368,8 @@ class DashboardManager {
   async populateFilterDropdowns() {
     try {
       const [subjectData, chapterData] = await Promise.all([
-        this.api.request('/dashboard/results-by-subject'),
-        this.api.request('/dashboard/results-by-chapter')
+        this.api.request('/dashboard?action=results-by-subject'),
+        this.api.request('/dashboard?action=results-by-chapter')
       ]);
 
       // Populate subject dropdown
@@ -472,7 +458,7 @@ class DashboardManager {
         if (value) params.append(key, value);
       });
 
-      const filteredResults = await this.api.request(`/dashboard/results?${params.toString()}`);
+      const filteredResults = await this.api.request(`/dashboard?action=results&${params.toString()}`);
       this.updateRecentResultsTable(filteredResults);
       
       this.showStatus('Filters applied successfully', 'success');
@@ -511,7 +497,7 @@ class DashboardManager {
     }
 
     try {
-      const data = await this.api.request('/dashboard/results-by-subject');
+      const data = await this.api.request('/dashboard?action=results-by-subject');
       const csvContent = this.convertToCSV(data, [
         'subject', 'section_name', 'attempts', 'average_percentage', 
         'best_percentage', 'lowest_percentage'
@@ -535,7 +521,7 @@ class DashboardManager {
     }
 
     try {
-      const data = await this.api.request('/dashboard/results-by-chapter');
+      const data = await this.api.request('/dashboard?action=results-by-chapter');
       const csvContent = this.convertToCSV(data, [
         'subject', 'chapter', 'section_name', 'attempts', 
         'average_percentage', 'best_percentage', 'lowest_percentage'

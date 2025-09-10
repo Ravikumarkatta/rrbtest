@@ -13,7 +13,6 @@ class MockTestAPI {
       // Fallback for server-side or testing
       this.baseURL = 'http://localhost:3000';
     }
-  this.offline = false;
   }
 
   // Helper method for making API requests
@@ -28,7 +27,7 @@ class MockTestAPI {
     };
 
     try {
-  const response = await fetch(url, config);
+      const response = await fetch(url, config);
       
       // Check if the response is JSON
       const contentType = response.headers.get('content-type');
@@ -43,18 +42,7 @@ class MockTestAPI {
         
         // If it looks like HTML, throw a more meaningful error
         if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
-          // Heuristic: If we hit HTML for a known core endpoint (/health or /test-files) likely the API server (vercel dev) isn't running
-          const baseMsg = `API endpoint not found: ${endpoint} (received HTML instead of JSON)`;
-          if (!this._htmlWarningShown) {
-            this._htmlWarningShown = true;
-            console.warn('[MockTestAPI] HTML fallback detected. This usually means:\n' +
-              '- You are viewing the static preview server (scripts/local-preview.js) instead of vercel dev, OR\n' +
-              '- vercel dev started on a different port (e.g., 3001) but you opened the old 3000 preview, OR\n' +
-              '- The /api route mapping is misconfigured.');
-            console.warn('[MockTestAPI] Fix tips: 1) Stop other dev servers. 2) Run `npx vercel dev --port 3000`. 3) Open the exact forwarded 3000/3001 URL then retry.');
-          }
-          this.offline = true;
-          throw new Error(baseMsg);
+          throw new Error(`API endpoint not found: ${endpoint} (received HTML instead of JSON)`);
         }
         
         // Try to parse as JSON anyway, in case content-type is wrong
@@ -72,9 +60,7 @@ class MockTestAPI {
       return data;
     } catch (error) {
       console.error('API request failed:', error);
-  // Mark offline for dashboard fallback
-  this.offline = true;
-  throw error;
+      throw error;
     }
   }
 
@@ -84,26 +70,6 @@ class MockTestAPI {
       method: 'POST',
       body: JSON.stringify({ fileName, fileJson })
     });
-  }
-
-  // Support listing with filters { subject_id, chapter_id, subject, chapter }
-  async listTestFiles(limit = 50, offset = 0, filters = {}) {
-    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-    Object.entries(filters).forEach(([k, v]) => { if (v) params.append(k, v); });
-    return this.request(`/test-files?${params.toString()}`);
-  }
-
-  // Subjects & chapters metadata
-  async getSubjects() {
-    return this.request('/subjects');
-  }
-
-  async getChapters(subject) {
-    return this.request(`/subjects?subject=${encodeURIComponent(subject)}`);
-  }
-
-  async getChaptersById(subjectId) {
-    return this.request(`/subjects?subject_id=${encodeURIComponent(subjectId)}`);
   }
 
   async listTestFiles(limit = 50, offset = 0) {
@@ -143,31 +109,32 @@ class MockTestAPI {
 
   // Dashboard API methods
   async getDashboardStatistics() {
-    return this.request('/dashboard/statistics');
+    return this.request('/dashboard?action=statistics');
   }
 
   async getResultsBySubject() {
-    return this.request('/dashboard/results-by-subject');
+    return this.request('/dashboard?action=results-by-subject');
   }
 
   async getResultsByChapter() {
-    return this.request('/dashboard/results-by-chapter');
+    return this.request('/dashboard?action=results-by-chapter');
   }
 
   async getRecentResults(limit = 20) {
-    return this.request(`/dashboard/recent-results?limit=${limit}`);
+    return this.request(`/dashboard?action=recent-results&limit=${limit}`);
   }
 
   async getFilteredResults(filters) {
     const params = new URLSearchParams();
+    params.append('action', 'results');
     Object.entries(filters).forEach(([key, value]) => {
       if (value) params.append(key, value);
     });
-    return this.request(`/dashboard/results?${params.toString()}`);
+    return this.request(`/dashboard?${params.toString()}`);
   }
 
   async getPerformanceTrends(days = 30) {
-    return this.request(`/dashboard/trends?days=${days}`);
+    return this.request(`/dashboard?action=trends&days=${days}`);
   }
 
   // Health check
@@ -187,10 +154,6 @@ class EnhancedMockTestApp {
   async handleJSONUploadWithStorage(event) {
     const file = event.target.files[0];
     const statusElement = document.getElementById('json-status');
-  const subjectSelect = document.getElementById('upload-subject');
-  const chapterSelect = document.getElementById('upload-chapter');
-  const chosenSubject = subjectSelect?.value || '';
-  const chosenChapter = chapterSelect?.value || '';
     
     if (!file) {
       if (statusElement) {
@@ -213,8 +176,6 @@ class EnhancedMockTestApp {
         try {
           const savedFile = await this.api.addTestFile(file.name, {
             metadata: result.metadata,
-            // Inject chosen subject/chapter overriding metadata if provided
-            ...(chosenSubject ? { metadata: { ...result.metadata, subject: chosenSubject, chapter: chosenChapter || undefined } } : {}),
             scoring_rules: result.scoringRules,
             grade_scale: result.gradeScale,
             questions: result.questions.map(q => ({
@@ -331,7 +292,7 @@ class EnhancedMockTestApp {
       fileList.innerHTML = files.map(file => `
         <div class="file-item">
           <h4>${file.file_name}</h4>
-          <p>Subject: ${(file.metadata?.subject) || file.section || file.file_json?.section || 'Unknown'}</p>
+          <p>Subject: ${file.metadata.subject || 'Unknown'}</p>
           <p>Questions: ${file.question_count}</p>
           <p>Uploaded: ${new Date(file.uploaded_at).toLocaleDateString()}</p>
           <button onclick="loadTestFile('${file.id}')">Load</button>
@@ -358,54 +319,6 @@ class EnhancedMockTestApp {
     }
   }
 }
-
-// Subject/chapter UI population after DOM ready
-document.addEventListener('DOMContentLoaded', async () => {
-  try {
-    if (!window.MockTestAPI) return;
-    const api = new MockTestAPI();
-    const subjectSelect = document.getElementById('upload-subject');
-    const chapterSelect = document.getElementById('upload-chapter');
-    if (!subjectSelect) return;
-    let data;
-    try {
-      data = await api.getSubjects();
-    } catch (err) {
-      console.warn('Subjects API failed, using fallback list:', err.message);
-      data = { subjects: [
-        { name: 'General Awareness', chapters: [] },
-        { name: 'General Intelligence and Reasoning', chapters: [] },
-        { name: 'Basics of Computers and Applications', chapters: [] },
-        { name: 'Mathematics', chapters: [] },
-        { name: 'Basic Science and Engineering', chapters: [] }
-      ] };
-    }
-    if (data?.subjects) {
-      subjectSelect.innerHTML = '<option value="">Select Subject</option>' +
-        data.subjects.map(s => `<option value="${s.id || s.name}">${s.name}</option>`).join('');
-    }
-    subjectSelect.addEventListener('change', async () => {
-      const subj = subjectSelect.value;
-      if (!subj) {
-        chapterSelect.innerHTML = '<option value="">Select subject first</option>';
-        chapterSelect.disabled = true;
-        return;
-      }
-      try {
-        // If the select value is an id, request chapters by subject_id
-        const chapData = await (subjectSelect.value && subjectSelect.value.length === 36 ? api.getChaptersById(subjectSelect.value) : api.getChapters(subj));
-        chapterSelect.disabled = false;
-        chapterSelect.innerHTML = '<option value="">(Optional) Chapter/Topic</option>' +
-          chapData.chapters.map(c => `<option value="${c.id || c}">${c.name || c}</option>`).join('');
-      } catch (err) {
-        console.warn('Failed to load chapters', err);
-        chapterSelect.disabled = true;
-      }
-    });
-  } catch (err) {
-    console.warn('Failed to initialize subject/chapter selectors', err);
-  }
-});
 
 // Global functions for button clicks (if needed)
 window.loadTestFile = async function(id) {
