@@ -2826,6 +2826,51 @@ input[type="file"].form-control:focus {
   border: 1px solid var(--color-border);
 }
 
+/* Subject/Chapter Selection */
+.subject-chapter-selection {
+  margin-bottom: var(--space-16);
+  padding: var(--space-16);
+  background: var(--color-bg-2);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-border);
+}
+
+.selection-group {
+  margin-bottom: var(--space-12);
+}
+
+.selection-group:last-child {
+  margin-bottom: 0;
+}
+
+.selection-group .setting-label {
+  display: block;
+  margin-bottom: var(--space-8);
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.selection-group .form-control {
+  width: 100%;
+  padding: var(--space-10);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  background: var(--color-bg-3);
+  color: var(--color-text-primary);
+  font-family: inherit;
+}
+
+.selection-group .form-control:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background: var(--color-bg-1);
+  box-shadow: 0 0 0 3px var(--color-primary-alpha);
+}
+
+.selection-group .form-control::placeholder {
+  color: var(--color-text-secondary);
+}
+
 /* File Browser Styles */
 .file-browser {
   width: 100%;

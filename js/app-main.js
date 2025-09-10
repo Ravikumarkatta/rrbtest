@@ -1045,6 +1045,19 @@ class MockTestApp {
     }
   }
 
+  // Infer question type if not present
+  inferQuestionType(question) {
+    if (question.options && Array.isArray(question.options)) {
+      if (question.options.length === 2 && 
+          question.options.some(opt => opt.toLowerCase().includes('true')) && 
+          question.options.some(opt => opt.toLowerCase().includes('false'))) {
+        return 'true_false';
+      }
+      return 'multiple_choice';
+    }
+    return 'multiple_choice'; // default fallback
+  }
+
   // Prepare file data for upload to backend
   async prepareFileForUpload(file, result) {
     const reader = new FileReader();
@@ -1053,15 +1066,28 @@ class MockTestApp {
         try {
           const rawData = JSON.parse(event.target.result);
           
+          // Get subject and chapter from UI inputs
+          const subjectInput = document.getElementById('upload-subject');
+          const chapterInput = document.getElementById('upload-chapter');
+          const selectedSubject = subjectInput?.value?.trim() || '';
+          const selectedChapter = chapterInput?.value?.trim() || '';
+          
           // Transform to the backend expected format
           const fileJson = {
-            section: rawData.section || rawData.metadata?.subject || 'Unknown Section',
+            section: rawData.section || selectedSubject || rawData.metadata?.subject || 'Unknown Section',
             total_questions: rawData.total_questions || rawData.questions?.length || 0,
             time_limit: rawData.time_limit || rawData.metadata?.time_limit || 60,
             target_score: rawData.target_score || rawData.metadata?.target_score || '75%',
+            metadata: {
+              subject: selectedSubject || rawData.section || rawData.metadata?.subject || 'Unknown Section',
+              chapter: selectedChapter || rawData.metadata?.chapter || '',
+              // Preserve any existing metadata
+              ...rawData.metadata
+            },
             questions: rawData.questions?.map(q => ({
               id: q.id || `q${Math.random().toString(36).substr(2, 9)}`,
               text: q.text || q.question,
+              type: q.type || this.inferQuestionType(q),
               options: q.options || [],
               correct_answer: q.correct_answer || q.correctAnswer,
               points: q.points || 10,

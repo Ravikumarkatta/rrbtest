@@ -134,6 +134,33 @@
                             </div>
                         </div>
                         <div class="upload-options">
+                            <div class="subject-chapter-selection">
+                                <div class="selection-group">
+                                    <label for="upload-subject" class="setting-label">Subject:</label>
+                                    <input type="text" id="upload-subject" placeholder="Enter subject (e.g., Physics, Chemistry)" class="form-control" list="subject-suggestions">
+                                    <datalist id="subject-suggestions">
+                                        <option value="Physics">
+                                        <option value="Chemistry">
+                                        <option value="Mathematics">
+                                        <option value="Biology">
+                                        <option value="General Science">
+                                        <option value="Reasoning">
+                                        <option value="General Awareness">
+                                    </datalist>
+                                </div>
+                                <div class="selection-group">
+                                    <label for="upload-chapter" class="setting-label">Chapter:</label>
+                                    <input type="text" id="upload-chapter" placeholder="Enter chapter (e.g., Units and Measurements)" class="form-control" list="chapter-suggestions">
+                                    <datalist id="chapter-suggestions">
+                                        <option value="Units and Measurements">
+                                        <option value="Motion in a Straight Line">
+                                        <option value="Motion in a Plane">
+                                        <option value="Laws of Motion">
+                                        <option value="Work, Energy and Power">
+                                        <option value="System of Particles and Rotational Motion">
+                                    </datalist>
+                                </div>
+                            </div>
                             <label class="checkbox-label">
                                 <input type="checkbox" id="save-to-cloud" checked>
                                 <span class="checkbox-custom"></span>

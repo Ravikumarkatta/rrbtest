@@ -244,6 +244,23 @@ class EnhancedQuestionManager {
     return errors;
   }
 
+  // Infer question type based on content
+  inferQuestionType(question) {
+    if (question.type) {
+      return question.type; // Already has type
+    }
+    
+    if (question.options && Array.isArray(question.options)) {
+      if (question.options.length === 2 && 
+          question.options.some(opt => opt.toLowerCase().includes('true')) && 
+          question.options.some(opt => opt.toLowerCase().includes('false'))) {
+        return 'true_false';
+      }
+      return 'multiple_choice';
+    }
+    return 'multiple_choice'; // default fallback
+  }
+
   // Validate individual question (enhanced from original)
   validateQuestion(question, index) {
     const errors = [];
@@ -259,16 +276,19 @@ class EnhancedQuestionManager {
         errors.push(`${questionLabel}: Missing required field 'text'`);
       }
       
-      if (!question.type) {
-        errors.push(`${questionLabel}: Missing required field 'type'`);
+      // Type field is optional if we can infer it
+      const inferredType = this.inferQuestionType(question);
+      if (!question.type && !inferredType) {
+        errors.push(`${questionLabel}: Missing required field 'type' and cannot infer type`);
       }
       
       if (question.correct_answer === undefined || question.correct_answer === null) {
         errors.push(`${questionLabel}: Missing required field 'correct_answer'`);
       }
       
-      // Type-specific validations
-      if (question.type === 'multiple_choice') {
+      // Type-specific validations using inferred type if needed
+      const questionType = question.type || inferredType;
+      if (questionType === 'multiple_choice') {
         if (!question.options || !Array.isArray(question.options)) {
           errors.push(`${questionLabel}: Multiple choice questions must have 'options' array`);
         } else if (question.options.length < 2) {
@@ -278,7 +298,7 @@ class EnhancedQuestionManager {
         }
       }
       
-      if (question.type === 'true_false') {
+      if (questionType === 'true_false') {
         const validAnswers = ['true', 'false', true, false];
         if (!validAnswers.includes(question.correct_answer)) {
           errors.push(`${questionLabel}: True/false questions must have correct_answer as 'true' or 'false'`);
@@ -330,12 +350,12 @@ class EnhancedQuestionManager {
     this.scoringRules = data.scoring_rules || data.scoring || {};
     this.gradeScale = data.grade_scale || {};
     
-    // Parse questions with enhanced properties
+    // Parse questions with enhanced properties and type inference
     const questions = data.questions.map((q, index) => ({
       id: index + 1,
       originalId: q.id,
       question: q.text,
-      type: q.type || 'multiple_choice',
+      type: this.inferQuestionType(q),
       options: this.getOptions(q),
       correctIndex: this.getCorrectIndex(q),
       correctAnswer: q.correct_answer,
