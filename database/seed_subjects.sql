@@ -1,12 +1,12 @@
 -- Idempotent seed for subjects and chapters
--- Inserts subjects and chapters drawn from api/subjects.js
+-- Inserts subjects and chapters drawn from CBT Technician Gr I Signal syllabus
 -- Run with psql: psql "$NEON_DATABASE_URL" -f database/seed_subjects.sql
 
 -- Uses pgcrypto gen_random_uuid(); ensure pgcrypto extension is enabled.
 
 BEGIN;
 
--- Insert subjects (idempotent)
+-- Insert subjects (idempotent) - CBT Syllabus
 INSERT INTO subjects (id, name, slug, created_at, updated_at)
 VALUES
   (gen_random_uuid(), 'General Awareness', 'general-awareness', NOW(), NOW()),

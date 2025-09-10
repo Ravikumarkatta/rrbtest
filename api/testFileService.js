@@ -157,32 +157,52 @@ class TestFileService {
 
     // When NEON is configured, try to find or create subject/chapter rows and store their UUIDs
     try {
-      // Subject upsert (find or create by name, case-insensitive)
-      if (fileJson?.metadata?.subject) {
-        const subjName = String(fileJson.metadata.subject).trim();
-        if (subjName) {
-          const found = await db.query(`SELECT id FROM subjects WHERE lower(name) = lower($1) LIMIT 1`, [subjName]);
-          if (found && found.length > 0) {
-            subjectId = found[0].id;
-          } else {
-            const slug = subjName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-            const ins = await db.query(`INSERT INTO subjects (id, name, slug, created_at, updated_at) VALUES (gen_random_uuid(), $1, $2, NOW(), NOW()) RETURNING id`, [subjName, slug]);
-            subjectId = ins[0].id;
-          }
-        }
+      // Check if subjects table exists first
+      let tablesExist = false;
+      try {
+        await db.query(`SELECT 1 FROM subjects LIMIT 1`);
+        tablesExist = true;
+      } catch (tableErr) {
+        console.warn('Subjects/chapters tables do not exist yet. Storing without normalized references.');
+        tablesExist = false;
       }
 
-      // Chapter upsert under subject
-      if (fileJson?.metadata?.chapter && subjectId) {
-        const chapName = String(fileJson.metadata.chapter).trim();
-        if (chapName) {
-          const foundC = await db.query(`SELECT id FROM chapters WHERE subject_id = $1 AND lower(name) = lower($2) LIMIT 1`, [subjectId, chapName]);
-          if (foundC && foundC.length > 0) {
-            chapterId = foundC[0].id;
-          } else {
-            const slug = chapName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-            const insC = await db.query(`INSERT INTO chapters (id, subject_id, name, slug, created_at, updated_at) VALUES (gen_random_uuid(), $1, $2, $3, NOW(), NOW()) RETURNING id`, [subjectId, chapName, slug]);
-            chapterId = insC[0].id;
+      if (tablesExist) {
+        // Subject upsert (find or create by name, case-insensitive)
+        if (fileJson?.metadata?.subject) {
+          const subjName = String(fileJson.metadata.subject).trim();
+          if (subjName) {
+            try {
+              const found = await db.query(`SELECT id FROM subjects WHERE lower(name) = lower($1) LIMIT 1`, [subjName]);
+              if (found && found.length > 0) {
+                subjectId = found[0].id;
+              } else {
+                const slug = subjName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                const ins = await db.query(`INSERT INTO subjects (id, name, slug, created_at, updated_at) VALUES (gen_random_uuid(), $1, $2, NOW(), NOW()) RETURNING id`, [subjName, slug]);
+                subjectId = ins[0].id;
+              }
+            } catch (subjErr) {
+              console.warn('Subject upsert failed:', subjErr.message);
+            }
+          }
+        }
+
+        // Chapter upsert under subject
+        if (fileJson?.metadata?.chapter && subjectId) {
+          const chapName = String(fileJson.metadata.chapter).trim();
+          if (chapName) {
+            try {
+              const foundC = await db.query(`SELECT id FROM chapters WHERE subject_id = $1 AND lower(name) = lower($2) LIMIT 1`, [subjectId, chapName]);
+              if (foundC && foundC.length > 0) {
+                chapterId = foundC[0].id;
+              } else {
+                const slug = chapName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                const insC = await db.query(`INSERT INTO chapters (id, subject_id, name, slug, created_at, updated_at) VALUES (gen_random_uuid(), $1, $2, $3, NOW(), NOW()) RETURNING id`, [subjectId, chapName, slug]);
+                chapterId = insC[0].id;
+              }
+            } catch (chapErr) {
+              console.warn('Chapter upsert failed:', chapErr.message);
+            }
           }
         }
       }
@@ -213,7 +233,8 @@ class TestFileService {
       where.push(`subject_id = $${params.length}`);
     } else if (filters.subject) {
       params.push(String(filters.subject).toLowerCase());
-      where.push(`(lower(file_json->>'section') = $${params.length} OR subject_id IN (SELECT id FROM subjects WHERE lower(name) = $${params.length}))`);
+      // Use safer query that doesn't fail if subjects table doesn't exist
+      where.push(`lower(file_json->>'section') = $${params.length}`);
     }
 
     if (filters.chapter_id) {
@@ -221,7 +242,8 @@ class TestFileService {
       where.push(`chapter_id = $${params.length}`);
     } else if (filters.chapter) {
       params.push(String(filters.chapter).toLowerCase());
-      where.push(`(lower(file_json->>'chapter') = $${params.length} OR chapter_id IN (SELECT id FROM chapters WHERE lower(name) = $${params.length}))`);
+      // Use safer query that doesn't fail if chapters table doesn't exist
+      where.push(`lower(file_json->>'chapter') = $${params.length}`);
     }
 
     // Build base query
