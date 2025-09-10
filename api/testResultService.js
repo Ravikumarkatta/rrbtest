@@ -43,20 +43,45 @@ class TestResultService {
   }
 
   /**
-   * Get test results by subject
+   * Get test results by subject (flexible)
+   * - If subject is a string: returns raw attempts for that subject (original behavior)
+   * - If subject is an object (filters): returns grouped-by-subject metrics with optional filters (what /api/dashboard expects)
    */
   async getResultsBySubject(subject, limit = 50, offset = 0) {
+    // Case 1: Backward-compatible raw results for a subject string
+    if (typeof subject === 'string') {
+      const query = `
+        SELECT tr.*, tf.file_name
+        FROM test_results tr
+        JOIN test_files tf ON tr.file_id = tf.id
+        WHERE tr.subject = $1
+        ORDER BY tr.date_taken DESC
+        LIMIT $2 OFFSET $3
+      `;
+      const result = await db.query(query, [subject, limit, offset]);
+      return result;
+    }
+
+    // Case 2: Filters object for aggregated, grouped-by-subject data
+    const filters = subject || {};
+    const { whereSQL, params } = this._buildWhereClause(filters, 'tr');
+
     const query = `
-      SELECT tr.*, tf.file_name
+      SELECT 
+        tr.subject,
+        COUNT(*) as attempts,
+        AVG(CAST(tr.score AS FLOAT) / CAST(tr.total AS FLOAT) * 100) as average_percentage,
+        MAX(CAST(tr.score AS FLOAT) / CAST(tr.total AS FLOAT) * 100) as best_percentage,
+        MIN(CAST(tr.score AS FLOAT) / CAST(tr.total AS FLOAT) * 100) as lowest_percentage,
+        tf.file_json->>'section' as section_name
       FROM test_results tr
       JOIN test_files tf ON tr.file_id = tf.id
-      WHERE tr.subject = $1
-      ORDER BY tr.date_taken DESC
-      LIMIT $2 OFFSET $3
+      ${whereSQL}
+      GROUP BY tr.subject, tf.file_json->>'section'
+      ORDER BY tr.subject
     `;
-    
-    const result = await db.query(query, [subject, limit, offset]);
-    return result;
+
+    return db.query(query, params);
   }
 
   /**
@@ -114,7 +139,7 @@ class TestResultService {
   }
 
   /**
-   * Get results grouped by subject
+   * Get results grouped by subject (no filters)
    */
   async getResultsBySubjectGrouped() {
     const query = `
@@ -136,7 +161,7 @@ class TestResultService {
   }
 
   /**
-   * Get results grouped by chapter
+   * Get results grouped by chapter (no filters)
    */
   async getResultsByChapterGrouped() {
     const query = `
@@ -160,6 +185,33 @@ class TestResultService {
   }
 
   /**
+   * NEW: Get results grouped by chapter WITH optional filters
+   * Matches /api/dashboard?action=results-by-chapter
+   * Accepts filters: { subject?, chapter?, startDate?, endDate? }
+   */
+  async getResultsByChapter(filters = {}) {
+    const { whereSQL, params } = this._buildWhereClause(filters, 'tr', { requireChapter: true });
+
+    const query = `
+      SELECT 
+        tr.subject,
+        tr.chapter,
+        COUNT(*) as attempts,
+        AVG(CAST(tr.score AS FLOAT) / CAST(tr.total AS FLOAT) * 100) as average_percentage,
+        MAX(CAST(tr.score AS FLOAT) / CAST(tr.total AS FLOAT) * 100) as best_percentage,
+        MIN(CAST(tr.score AS FLOAT) / CAST(tr.total AS FLOAT) * 100) as lowest_percentage,
+        tf.file_json->>'section' as section_name
+      FROM test_results tr
+      JOIN test_files tf ON tr.file_id = tf.id
+      ${whereSQL}
+      GROUP BY tr.subject, tr.chapter, tf.file_json->>'section'
+      ORDER BY tr.subject, tr.chapter
+    `;
+
+    return db.query(query, params);
+  }
+
+  /**
    * Get recent test results with file information
    */
   async getRecentResults(limit = 20) {
@@ -180,7 +232,7 @@ class TestResultService {
   }
 
   /**
-   * Get results with date range filtering
+   * Get results with date range filtering (raw rows)
    */
   async getResultsWithFilters({ subject, chapter, startDate, endDate, limit = 50, offset = 0 }) {
     let whereConditions = [];
@@ -232,6 +284,14 @@ class TestResultService {
   }
 
   /**
+   * NEW: Alias to match /api/dashboard?action=results
+   * Delegates to getResultsWithFilters
+   */
+  async getFilteredResults(filters) {
+    return this.getResultsWithFilters(filters || {});
+  }
+
+  /**
    * Get performance trends over time
    */
   async getPerformanceTrends(days = 30) {
@@ -248,6 +308,41 @@ class TestResultService {
     
     const result = await db.query(query);
     return result;
+  }
+
+  /**
+   * Internal helper: build WHERE clause and params for filters
+   * filters: { subject?, chapter?, startDate?, endDate? }
+   * opts: { requireChapter?: boolean }
+   */
+  _buildWhereClause(filters = {}, alias = 'tr', opts = {}) {
+    const where = [];
+    const params = [];
+    let i = 1;
+
+    if (opts.requireChapter) {
+      where.push(`${alias}.chapter IS NOT NULL`);
+    }
+
+    if (filters.subject) {
+      where.push(`${alias}.subject = $${i++}`);
+      params.push(filters.subject);
+    }
+    if (filters.chapter) {
+      where.push(`${alias}.chapter = $${i++}`);
+      params.push(filters.chapter);
+    }
+    if (filters.startDate) {
+      where.push(`${alias}.date_taken >= $${i++}`);
+      params.push(filters.startDate);
+    }
+    if (filters.endDate) {
+      where.push(`${alias}.date_taken <= $${i++}`);
+      params.push(filters.endDate);
+    }
+
+    const whereSQL = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    return { whereSQL, params };
   }
 }
 
