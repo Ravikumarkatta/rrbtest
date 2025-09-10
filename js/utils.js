@@ -214,6 +214,23 @@ class Utils {
     }
   }
 
+  // Escape text for safe insertion into HTML
+  static escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    const str = String(value);
+    if (!/[&<>"'`=]/.test(str)) return str;
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;',
+      '`': '&#x60;',
+      '=': '&#x3D;',
+    };
+    return str.replace(/[&<>"'`=]/g, ch => map[ch]);
+  }
+
   // Show user-friendly error message
   static showError(message, title = 'Error') {
     if (typeof message === 'object' && message.message) {

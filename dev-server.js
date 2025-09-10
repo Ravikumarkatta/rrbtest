@@ -101,8 +101,8 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ error: error.message }));
     }
   } else {
-    // Serve static files from public/
-    const filePath = path.join(__dirname, 'public', req.url === '/' ? 'index.html' : req.url);
+    // Serve static files from root directory
+    const filePath = path.join(__dirname, req.url === '/' ? 'index.html' : req.url);
     
     if (fs.existsSync(filePath)) {
       const ext = path.extname(filePath);

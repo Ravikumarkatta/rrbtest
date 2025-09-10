@@ -2,38 +2,97 @@
 
 This guide addresses the common deployment issues and provides a step-by-step solution to fix the load and delete function errors.
 
-## Issues Identified
+## 🚨 Critical Issue: Environment Variable Secret Reference Error
 
-1. **Environment Variables Not Set in Vercel Dashboard**
-2. **Database Query Syntax Issues**
-3. **Request Body Parsing Errors**
-4. **Insufficient Memory/Timeout for Serverless Functions**
+**Error Message**: `Environment Variable "NEON_DATABASE_URL" references Secret "NEON_DATABASE_URL", which does not exist.`
+
+**Root Cause**: The `vercel.json` file was incorrectly configured to use Vercel Secrets (with `@` prefix) instead of regular environment variables.
+
+## ✅ Issues Fixed
+
+1. **Removed Secret References from vercel.json** - Environment variables now work with standard dashboard configuration
+2. **Database Query Syntax Issues** - Fixed parameterized query handling
+3. **Request Body Parsing Errors** - Enhanced error handling
+4. **Insufficient Memory/Timeout for Serverless Functions** - Increased limits
 
 ## Step-by-Step Fix
 
 ### 1. Configure Environment Variables in Vercel Dashboard
 
-The `.env` file is **NOT used in production**. You must set environment variables in the Vercel dashboard:
+**IMPORTANT**: The `.env` file is **NOT used in production**. You must set environment variables in the Vercel dashboard:
 
-1. Go to your Vercel project dashboard
+#### Method 1: Using Vercel Dashboard (Recommended)
+
+1. Go to your Vercel project dashboard: `https://vercel.com/your-username/your-project-name`
 2. Navigate to **Settings → Environment Variables**
-3. Add the following variables:
+3. Click **"Add New"** for each variable below:
 
 | Variable Name | Value | Environments |
 |--------------|--------|--------------|
-| `NEON_DATABASE_URL` | `postgresql://neondb_owner:npg_RA6CK9XmoTfE@ep-rapid-voice-a1gewv3h-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require` | Production, Preview, Development |
-| `ALLOWED_ORIGINS` | `https://your-vercel-app.vercel.app,http://localhost:3000` | Production, Preview, Development |
-| `NODE_ENV` | `production` | Production |
+| `NEON_DATABASE_URL` | `postgresql://neondb_owner:npg_RA6CK9XmoTfE@ep-rapid-voice-a1gewv3h-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require` | ✅ Production, ✅ Preview, ✅ Development |
+| `ALLOWED_ORIGINS` | `https://your-vercel-app.vercel.app,http://localhost:3000` | ✅ Production, ✅ Preview, ✅ Development |
+| `NODE_ENV` | `production` | ✅ Production only |
 
-**Important**: Replace `your-vercel-app` with your actual Vercel app name.
+**Important**: 
+- Replace `your-vercel-app` with your actual Vercel app name
+- Make sure to check all three environments (Production, Preview, Development) for the first two variables
+- Only set `NODE_ENV` for Production environment
 
-### 2. Test Environment Variables
+#### Method 2: Using Vercel CLI (Alternative)
 
-After setting the environment variables, test them using the health endpoint:
+```bash
+# Set environment variables using CLI
+vercel env add NEON_DATABASE_URL
+# When prompted, paste: postgresql://neondb_owner:npg_RA6CK9XmoTfE@ep-rapid-voice-a1gewv3h-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
+# Select: Production, Preview, Development
+
+vercel env add ALLOWED_ORIGINS  
+# When prompted, paste: https://your-vercel-app.vercel.app,http://localhost:3000
+# Select: Production, Preview, Development
+
+vercel env add NODE_ENV
+# When prompted, paste: production
+# Select: Production only
+```
+
+### 2. 🔄 Mandatory Redeploy After Environment Configuration
+
+**CRITICAL**: Environment variables only take effect on new deployments. After setting the environment variables:
+
+1. **Option A: Trigger Auto-Deployment (Recommended)**
+   ```bash
+   # Make a small change and push to trigger deployment
+   git add .
+   git commit -m "Update environment configuration"
+   git push
+   ```
+
+2. **Option B: Manual Redeploy from Dashboard**
+   - Go to your Vercel project dashboard
+   - Navigate to **Deployments** tab  
+   - Click **"Redeploy"** on the latest deployment
+   - Select **"Use existing Build Cache"** and click **"Redeploy"**
+
+3. **Option C: Force Redeploy via CLI**
+   ```bash
+   vercel --prod
+   ```
+
+### 3. Test Environment Configuration
+
+After redeployment, test the environment variables using the health endpoint:
 
 ```bash
 # Test health endpoint
 curl https://your-vercel-app.vercel.app/api/health
+```
+
+**OR use the automated verification script:**
+
+```bash
+# Run the verification script
+node scripts/verify-deployment.js
+# Enter your Vercel app URL when prompted
 ```
 
 Expected response:
@@ -53,16 +112,11 @@ Expected response:
 }
 ```
 
-### 3. Redeploy After Environment Configuration
+### 4. Redeploy After Environment Configuration
 
-After setting environment variables:
+⚠️ **This section is now covered above in step 2**
 
-1. **Trigger a new deployment** (environment variables only take effect on new deployments)
-2. Either:
-   - Push a new commit to trigger auto-deployment
-   - Or manually redeploy from the Vercel dashboard
-
-### 4. Test File Operations
+### 5. Test File Operations
 
 Test the file operations that were failing:
 
@@ -78,6 +132,10 @@ curl -X DELETE https://your-vercel-app.vercel.app/api/test-files/FILE_ID
 ```
 
 ## Common Error Messages and Solutions
+
+### ❌ Error: "Environment Variable 'NEON_DATABASE_URL' references Secret 'NEON_DATABASE_URL', which does not exist"
+- **Cause**: The `vercel.json` was incorrectly configured to use Vercel Secrets (with `@` prefix)
+- **Solution**: ✅ **FIXED** - Updated `vercel.json` to remove secret references. Environment variables now work with standard dashboard configuration.
 
 ### Error: "NEON_DATABASE_URL is not set"
 - **Cause**: Environment variables not configured in Vercel dashboard

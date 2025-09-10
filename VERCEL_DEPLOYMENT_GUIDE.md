@@ -20,13 +20,7 @@ The application has been converted from Express.js to Vercel serverless function
 │       └── results.js                (GET /api/test-files/[id]/results)
 ├── test-results/
 │   └── index.js                      (POST /api/test-results)
-└── dashboard/
-    ├── statistics.js                 (GET /api/dashboard/statistics)
-    ├── results-by-subject.js         (GET /api/dashboard/results-by-subject)
-    ├── results-by-chapter.js         (GET /api/dashboard/results-by-chapter)
-    ├── recent-results.js             (GET /api/dashboard/recent-results)
-    ├── results.js                    (GET /api/dashboard/results)
-    └── trends.js                     (GET /api/dashboard/trends)
+└── dashboard.js                      (All dashboard operations via ?action= parameter)
 ```
 
 ## 🚀 Quick Setup
@@ -140,12 +134,12 @@ vercel --prod
 - **POST** `/api/test-results` - Save test results
 
 ### Dashboard Analytics
-- **GET** `/api/dashboard/statistics` - Overall statistics
-- **GET** `/api/dashboard/results-by-subject` - Subject-grouped results
-- **GET** `/api/dashboard/results-by-chapter` - Chapter-grouped results
-- **GET** `/api/dashboard/recent-results` - Recent test attempts
-- **GET** `/api/dashboard/results` - Filtered results
-- **GET** `/api/dashboard/trends` - Performance trends
+- **GET** `/api/dashboard?action=statistics` - Overall statistics
+- **GET** `/api/dashboard?action=results-by-subject` - Subject-grouped results
+- **GET** `/api/dashboard?action=results-by-chapter` - Chapter-grouped results
+- **GET** `/api/dashboard?action=recent-results&limit=20` - Recent test attempts
+- **GET** `/api/dashboard?action=results&startDate=...&endDate=...` - Filtered results
+- **GET** `/api/dashboard?action=trends&days=30` - Performance trends
 
 ## 🧪 Testing
 

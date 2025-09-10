@@ -137,7 +137,8 @@ class TestFileService {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
     }
 
-    const id = uuidv4();
+    // Use database-generated UUID instead of manual generation
+    const id = uuidv4(); // Only for local fallback
 
     // If no real DB configured, persist to local JSON file for dev
     if (!process.env.NEON_DATABASE_URL) {
@@ -157,42 +158,65 @@ class TestFileService {
 
     // When NEON is configured, try to find or create subject/chapter rows and store their UUIDs
     try {
-      // Subject upsert (find or create by name, case-insensitive)
-      if (fileJson?.metadata?.subject) {
-        const subjName = String(fileJson.metadata.subject).trim();
-        if (subjName) {
-          const found = await db.query(`SELECT id FROM subjects WHERE lower(name) = lower($1) LIMIT 1`, [subjName]);
-          if (found && found.length > 0) {
-            subjectId = found[0].id;
-          } else {
-            const slug = subjName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-            const ins = await db.query(`INSERT INTO subjects (id, name, slug, created_at, updated_at) VALUES (gen_random_uuid(), $1, $2, NOW(), NOW()) RETURNING id`, [subjName, slug]);
-            subjectId = ins[0].id;
+      // Check if subjects table exists first
+      let tablesExist = false;
+      try {
+        await db.query(`SELECT 1 FROM subjects LIMIT 1`);
+        tablesExist = true;
+      } catch (tableErr) {
+        console.warn('Subjects/chapters tables do not exist yet. Storing without normalized references.');
+        tablesExist = false;
+      }
+
+      if (tablesExist) {
+        // Subject upsert (find or create by name, case-insensitive)
+        if (fileJson?.metadata?.subject) {
+          const subjName = String(fileJson.metadata.subject).trim();
+          if (subjName) {
+            try {
+              const found = await db.query(`SELECT id FROM subjects WHERE lower(name) = lower($1) LIMIT 1`, [subjName]);
+              if (found && found.length > 0) {
+                subjectId = found[0].id;
+              } else {
+                const slug = subjName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                // Let database generate UUID with default instead of gen_random_uuid()
+                const ins = await db.query(`INSERT INTO subjects (name, slug, created_at, updated_at) VALUES ($1, $2, NOW(), NOW()) RETURNING id`, [subjName, slug]);
+                subjectId = ins[0].id;
+              }
+            } catch (subjErr) {
+              console.warn('Subject upsert failed:', subjErr.message);
+            }
+          }
+        }
+
+        // Chapter upsert under subject
+        if (fileJson?.metadata?.chapter && subjectId) {
+          const chapName = String(fileJson.metadata.chapter).trim();
+          if (chapName) {
+            try {
+              const foundC = await db.query(`SELECT id FROM chapters WHERE subject_id = $1 AND lower(name) = lower($2) LIMIT 1`, [subjectId, chapName]);
+              if (foundC && foundC.length > 0) {
+                chapterId = foundC[0].id;
+              } else {
+                const slug = chapName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                // Let database generate UUID with default instead of gen_random_uuid()
+                const insC = await db.query(`INSERT INTO chapters (subject_id, name, slug, created_at, updated_at) VALUES ($1, $2, $3, NOW(), NOW()) RETURNING id`, [subjectId, chapName, slug]);
+                chapterId = insC[0].id;
+              }
+            } catch (chapErr) {
+              console.warn('Chapter upsert failed:', chapErr.message);
+            }
           }
         }
       }
 
-      // Chapter upsert under subject
-      if (fileJson?.metadata?.chapter && subjectId) {
-        const chapName = String(fileJson.metadata.chapter).trim();
-        if (chapName) {
-          const foundC = await db.query(`SELECT id FROM chapters WHERE subject_id = $1 AND lower(name) = lower($2) LIMIT 1`, [subjectId, chapName]);
-          if (foundC && foundC.length > 0) {
-            chapterId = foundC[0].id;
-          } else {
-            const slug = chapName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-            const insC = await db.query(`INSERT INTO chapters (id, subject_id, name, slug, created_at, updated_at) VALUES (gen_random_uuid(), $1, $2, $3, NOW(), NOW()) RETURNING id`, [subjectId, chapName, slug]);
-            chapterId = insC[0].id;
-          }
-        }
-      }
-
+      // Let database generate UUID with default instead of manual generation
       const query = `
-        INSERT INTO test_files (id, file_name, subject_id, chapter_id, file_json)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO test_files (file_name, subject_id, chapter_id, file_json)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
       `;
-      const result = await db.query(query, [id, fileName, subjectId, chapterId, JSON.stringify(fileJson)]);
+      const result = await db.query(query, [fileName, subjectId, chapterId, JSON.stringify(fileJson)]);
       return result[0];
     } catch (err) {
       // If anything goes wrong with DB upsert, surface the error
@@ -210,41 +234,21 @@ class TestFileService {
 
     if (filters.subject_id) {
       params.push(filters.subject_id);
-      where.push(`subject_id = $${params.length}`);
+      where.push(`tf.subject_id = $${params.length}`);
     } else if (filters.subject) {
       params.push(String(filters.subject).toLowerCase());
-      where.push(`(lower(file_json->>'section') = $${params.length} OR subject_id IN (SELECT id FROM subjects WHERE lower(name) = $${params.length}))`);
+      // Use safer query that doesn't fail if subjects table doesn't exist
+      where.push(`(lower(s.name) = $${params.length} OR lower(tf.file_json->>'section') = $${params.length})`);
     }
 
     if (filters.chapter_id) {
       params.push(filters.chapter_id);
-      where.push(`chapter_id = $${params.length}`);
+      where.push(`tf.chapter_id = $${params.length}`);
     } else if (filters.chapter) {
       params.push(String(filters.chapter).toLowerCase());
-      where.push(`(lower(file_json->>'chapter') = $${params.length} OR chapter_id IN (SELECT id FROM chapters WHERE lower(name) = $${params.length}))`);
+      // Use safer query that doesn't fail if chapters table doesn't exist
+      where.push(`(lower(c.name) = $${params.length} OR lower(tf.file_json->>'chapter') = $${params.length})`);
     }
-
-    // Build base query
-    let query = `
-      SELECT id, file_name, uploaded_at, subject_id, chapter_id,
-             file_json->>'section' as section,
-             file_json->>'chapter' as chapter,
-             file_json->>'total_questions' as total_questions,
-             file_json->>'time_limit' as time_limit,
-             file_json->>'target_score' as target_score,
-             jsonb_array_length(file_json->'questions') as question_count
-      FROM test_files`
-    ;
-
-    if (where.length) {
-      query += '\n WHERE ' + where.join(' AND ');
-    }
-
-    query += `\n ORDER BY uploaded_at DESC`;
-
-    // Append limit/offset params
-    params.push(limit, offset);
-    query += `\n LIMIT $${params.length - 1} OFFSET $${params.length}`;
 
     // Local fallback
     if (!process.env.NEON_DATABASE_URL) {
@@ -260,16 +264,78 @@ class TestFileService {
         total_questions: (row.file_json && row.file_json.total_questions) || (row.file_json && (row.file_json.questions && row.file_json.questions.length)) || 0,
         time_limit: (row.file_json && row.file_json.time_limit) || 0,
         question_count: (row.file_json && row.file_json.questions && row.file_json.questions.length) || 0,
-        file_json: row.file_json
+        file_json: row.file_json,
+        // Add metadata for frontend compatibility
+        metadata: {
+          subject: (row.file_json && (row.file_json.section || row.file_json.metadata?.subject)) || '',
+          chapter: row.file_json?.chapter || ''
+        }
       }));
       return slice;
     }
+
+    // Try enhanced query with joins first, fallback to simple query if tables don't exist
+    let query;
+    let useJoins = true;
+    
+    try {
+      // Test if subjects table exists
+      await db.query(`SELECT 1 FROM subjects LIMIT 1`);
+    } catch (tableErr) {
+      console.warn('Subjects/chapters tables do not exist, using fallback query');
+      useJoins = false;
+    }
+
+    if (useJoins) {
+      // Enhanced query with proper joins to get subject and chapter names
+      query = `
+        SELECT tf.id, tf.file_name, tf.uploaded_at, tf.subject_id, tf.chapter_id,
+               COALESCE(s.name, tf.file_json->>'section') as section,
+               COALESCE(c.name, tf.file_json->>'chapter') as chapter,
+               s.name as subject_name,
+               c.name as chapter_name,
+               tf.file_json->>'total_questions' as total_questions,
+               tf.file_json->>'time_limit' as time_limit,
+               tf.file_json->>'target_score' as target_score,
+               jsonb_array_length(tf.file_json->'questions') as question_count,
+               tf.file_json
+        FROM test_files tf
+        LEFT JOIN subjects s ON tf.subject_id = s.id
+        LEFT JOIN chapters c ON tf.chapter_id = c.id`;
+    } else {
+      // Fallback query without joins
+      query = `
+        SELECT id, file_name, uploaded_at, subject_id, chapter_id,
+               file_json->>'section' as section,
+               file_json->>'chapter' as chapter,
+               file_json->>'total_questions' as total_questions,
+               file_json->>'time_limit' as time_limit,
+               file_json->>'target_score' as target_score,
+               jsonb_array_length(file_json->'questions') as question_count,
+               file_json
+        FROM test_files`;
+    }
+
+    if (where.length) {
+      query += '\n WHERE ' + where.join(' AND ');
+    }
+
+    query += `\n ORDER BY ${useJoins ? 'tf.' : ''}uploaded_at DESC`;
+
+    // Append limit/offset params
+    params.push(limit, offset);
+    query += `\n LIMIT $${params.length - 1} OFFSET $${params.length}`;
 
     const result = await db.query(query, params);
     return result.map(row => ({
       ...row,
       total_questions: parseInt(row.total_questions) || 0,
-      time_limit: parseInt(row.time_limit) || 0
+      time_limit: parseInt(row.time_limit) || 0,
+      // Provide enhanced metadata for frontend
+      metadata: {
+        subject: row.subject_name || row.section || (row.file_json?.metadata?.subject) || '',
+        chapter: row.chapter_name || row.chapter || (row.file_json?.metadata?.chapter) || ''
+      }
     }));
   }
 
