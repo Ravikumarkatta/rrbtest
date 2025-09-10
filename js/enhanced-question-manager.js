@@ -198,13 +198,11 @@ class EnhancedQuestionManager {
     };
   }
 
-  // Validate root-level metadata (backend format)
+  // Validate root-level metadata (backend format) - now more tolerant
   validateRootMetadata(data) {
     const errors = [];
     
-    if (!data.section) {
-      errors.push('Root metadata must include section');
-    }
+    // Section is no longer required - will be generated from fallbacks
     
     if (data.total_questions && typeof data.total_questions !== 'number') {
       errors.push('total_questions must be a number');
@@ -217,17 +215,12 @@ class EnhancedQuestionManager {
     return errors;
   }
 
-  // Validate metadata structure
+  // Validate metadata structure - now more tolerant
   validateMetadata(metadata) {
     const errors = [];
     
-    if (!metadata.title) {
-      errors.push('Metadata must include title');
-    }
-    
-    if (!metadata.subject) {
-      errors.push('Metadata must include subject');
-    }
+    // Title is no longer required - will be generated from fallbacks
+    // Subject is no longer required - will be generated from fallbacks
     
     if (metadata.total_questions && typeof metadata.total_questions !== 'number') {
       errors.push('Metadata total_questions must be a number');
@@ -261,19 +254,21 @@ class EnhancedQuestionManager {
     return 'multiple_choice'; // default fallback
   }
 
-  // Validate individual question (enhanced from original)
+  // Validate individual question (enhanced from original) - now more tolerant
   validateQuestion(question, index) {
     const errors = [];
     const questionLabel = `Question ${index + 1} (ID: ${question.id || 'unknown'})`;
     
     try {
-      // Required fields
+      // Required fields with flexible support
       if (!question.id) {
         errors.push(`${questionLabel}: Missing required field 'id'`);
       }
       
-      if (!question.text) {
-        errors.push(`${questionLabel}: Missing required field 'text'`);
+      // Support both 'text' and 'question' fields
+      const questionText = question.text || question.question;
+      if (!questionText) {
+        errors.push(`${questionLabel}: Missing required field 'text' or 'question'`);
       }
       
       // Type field is optional if we can infer it
@@ -282,8 +277,10 @@ class EnhancedQuestionManager {
         errors.push(`${questionLabel}: Missing required field 'type' and cannot infer type`);
       }
       
-      if (question.correct_answer === undefined || question.correct_answer === null) {
-        errors.push(`${questionLabel}: Missing required field 'correct_answer'`);
+      // Support multiple correct answer formats
+      const correctAnswer = this.getCorrectAnswer(question);
+      if (correctAnswer === null || correctAnswer === undefined) {
+        errors.push(`${questionLabel}: Missing required correct answer (correct_answer, correctIndex, or answerKey)`);
       }
       
       // Type-specific validations using inferred type if needed
@@ -293,14 +290,18 @@ class EnhancedQuestionManager {
           errors.push(`${questionLabel}: Multiple choice questions must have 'options' array`);
         } else if (question.options.length < 2) {
           errors.push(`${questionLabel}: Multiple choice questions must have at least 2 options`);
-        } else if (!question.options.includes(question.correct_answer)) {
-          errors.push(`${questionLabel}: correct_answer must be one of the options`);
+        } else {
+          // Validate correct answer against options
+          const normalizedCorrect = this.normalizeCorrectAnswer(question, correctAnswer);
+          if (normalizedCorrect === null) {
+            errors.push(`${questionLabel}: correct_answer must be valid (matching option or valid index)`);
+          }
         }
       }
       
       if (questionType === 'true_false') {
-        const validAnswers = ['true', 'false', true, false];
-        if (!validAnswers.includes(question.correct_answer)) {
+        const validAnswers = ['true', 'false', true, false, 'True', 'False'];
+        if (!validAnswers.includes(correctAnswer)) {
           errors.push(`${questionLabel}: True/false questions must have correct_answer as 'true' or 'false'`);
         }
       }
@@ -325,47 +326,111 @@ class EnhancedQuestionManager {
     return errors;
   }
 
-  // Parse questions from JSON data (enhanced)
-  parseQuestions(data) {
+  // Get correct answer from various formats
+  getCorrectAnswer(question) {
+    // Direct correct_answer field
+    if (question.correct_answer !== undefined && question.correct_answer !== null) {
+      return question.correct_answer;
+    }
+    
+    // correctIndex as number
+    if (typeof question.correctIndex === 'number' && question.options && question.options[question.correctIndex]) {
+      return question.options[question.correctIndex];
+    }
+    
+    // answerKey as letter (A, B, C, D)
+    if (question.answerKey && typeof question.answerKey === 'string') {
+      const letterToIndex = { 'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5 };
+      const index = letterToIndex[question.answerKey.toUpperCase()];
+      if (index !== undefined && question.options && question.options[index]) {
+        return question.options[index];
+      }
+    }
+    
+    return null;
+  }
+
+  // Normalize correct answer for validation
+  normalizeCorrectAnswer(question, correctAnswer) {
+    if (!question.options || !Array.isArray(question.options)) {
+      return correctAnswer;
+    }
+    
+    // If it's already in options, it's valid
+    if (question.options.includes(correctAnswer)) {
+      return correctAnswer;
+    }
+    
+    // Try case-insensitive match
+    const lowerCorrect = String(correctAnswer).toLowerCase();
+    const matchingOption = question.options.find(opt => String(opt).toLowerCase() === lowerCorrect);
+    if (matchingOption) {
+      return matchingOption;
+    }
+    
+    return null;
+  }
+
+  // Parse questions from JSON data (enhanced) - now with better fallbacks
+  parseQuestions(data, fileName = '') {
     const validation = this.validateQuestions(data);
     
     if (!validation.isValid) {
       throw new Error(`Validation failed:\n${validation.errors.join('\n')}`);
     }
     
-    // Store metadata - handle both formats
+    // Generate metadata with fallbacks as specified in requirements
+    const sanitizedFileName = fileName.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9\s]/g, " ").trim();
+    const firstCategoryKey = data.instructions?.category_distribution ? Object.keys(data.instructions.category_distribution)[0] : '';
+    
+    const generatedMetadata = {
+      title: data.metadata?.title || data.section || data.metadata?.subject || sanitizedFileName || "Untitled Test",
+      subject: data.metadata?.subject || data.section || "",
+      chapter: data.metadata?.chapter || firstCategoryKey || "",
+      total_questions: data.total_questions || data.questions?.length || 0,
+      time_limit: data.time_limit || data.metadata?.time_limit || 60,
+      target_score: data.target_score || data.metadata?.target_score || '75%'
+    };
+    
+    // Store metadata - handle both formats with fallbacks
     if (data.metadata) {
-      this.metadata = data.metadata;
+      this.metadata = { ...generatedMetadata, ...data.metadata };
     } else {
       // Backend format with root-level metadata
-      this.metadata = {
-        title: data.section || 'Test',
-        subject: data.section || 'Unknown',
-        total_questions: data.total_questions,
-        time_limit: data.time_limit,
-        target_score: data.target_score
-      };
+      this.metadata = generatedMetadata;
     }
     
     this.scoringRules = data.scoring_rules || data.scoring || {};
     this.gradeScale = data.grade_scale || {};
     
-    // Parse questions with enhanced properties and type inference
-    const questions = data.questions.map((q, index) => ({
-      id: index + 1,
-      originalId: q.id,
-      question: q.text,
-      type: this.inferQuestionType(q),
-      options: this.getOptions(q),
-      correctIndex: this.getCorrectIndex(q),
-      correctAnswer: q.correct_answer,
-      points: q.points || this.scoringRules.correct_points || 10,
-      topic: q.category || 'General',
-      difficulty: this.capitalizeFirst(q.difficulty || 'medium'),
-      timeLimit: q.time_limit || this.metadata.time_limit || 60,
-      solution: q.solution || '',
-      pyqYear: q.pyq_year || ''
-    }));
+    // Parse questions with enhanced properties and normalized format
+    const questions = data.questions.map((q, index) => {
+      const questionText = q.text || q.question || '';
+      const correctAnswer = this.getCorrectAnswer(q);
+      
+      return {
+        id: index + 1,
+        originalId: q.id,
+        question: questionText,
+        type: q.type || this.inferQuestionType(q),
+        options: this.getOptions(q),
+        correctIndex: this.getCorrectIndex(q),
+        correctAnswer: correctAnswer,
+        points: q.points || this.scoringRules.correct_points || 10,
+        topic: q.category || q.topic || 'General',
+        difficulty: this.capitalizeFirst(q.difficulty || 'medium'),
+        timeLimit: q.time_limit || q.timeLimit || this.metadata.time_limit || 60,
+        solution: q.solution || '',
+        pyqYear: q.pyq_year || '',
+        // Include per-question metadata
+        metadata: {
+          section: q.section || q.category || q.topic || this.metadata.subject,
+          subject: this.metadata.subject,
+          chapter: this.metadata.chapter,
+          title: this.metadata.title
+        }
+      };
+    });
     
     return questions;
   }
@@ -441,16 +506,44 @@ class EnhancedQuestionManager {
   }
 
   // Utility methods (from original QuestionManager)
+  // Get correct index with support for multiple formats
   getCorrectIndex(question) {
-    if (question.type === 'true_false') return question.correct_answer === true || question.correct_answer === 'true' ? 0 : 1;
-    if (question.options && Array.isArray(question.options)) {
-      return question.options.findIndex(option => option === question.correct_answer);
+    const correctAnswer = this.getCorrectAnswer(question);
+    
+    // For true/false questions
+    if (question.type === 'true_false' || this.inferQuestionType(question) === 'true_false') {
+      return correctAnswer === true || correctAnswer === 'true' || correctAnswer === 'True' ? 0 : 1;
     }
+    
+    // For multiple choice, find the index of correct answer
+    if (question.options && Array.isArray(question.options)) {
+      let index = question.options.findIndex(option => option === correctAnswer);
+      
+      // Try case-insensitive match if exact match not found
+      if (index === -1 && correctAnswer) {
+        const lowerCorrect = String(correctAnswer).toLowerCase();
+        index = question.options.findIndex(opt => String(opt).toLowerCase() === lowerCorrect);
+      }
+      
+      // If correctIndex was provided directly, use it
+      if (index === -1 && typeof question.correctIndex === 'number') {
+        return question.correctIndex;
+      }
+      
+      return Math.max(0, index);
+    }
+    
     return 0;
   }
 
+  // Get options with flexible support
   getOptions(question) {
-    if (question.type === 'true_false') return ['True', 'False'];
+    const inferredType = this.inferQuestionType(question);
+    
+    if (question.type === 'true_false' || inferredType === 'true_false') {
+      return ['True', 'False'];
+    }
+    
     return question.options || [];
   }
 
@@ -468,7 +561,7 @@ class EnhancedQuestionManager {
       reader.onload = (event) => {
         try {
           const jsonData = JSON.parse(event.target.result);
-          const questions = this.parseQuestions(jsonData);
+          const questions = this.parseQuestions(jsonData, fileName);
           this.questions = questions;
           
           resolve({

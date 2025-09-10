@@ -997,6 +997,20 @@ class MockTestApp {
 
         // Save to cloud if enabled and API is available
         if (saveToCloud && window.MockTestAPI) {
+          // Validate Subject and Chapter are provided for cloud save
+          const subjectInput = document.getElementById('upload-subject');
+          const chapterInput = document.getElementById('upload-chapter');
+          const selectedSubject = subjectInput?.value?.trim() || '';
+          const selectedChapter = chapterInput?.value?.trim() || '';
+          
+          if (!selectedSubject || !selectedChapter) {
+            if (statusElement) {
+              statusElement.innerHTML += `<div class="status-message error">❌ Please enter Subject and Chapter before saving to cloud.</div>`;
+            }
+            Utils.showError('Please enter Subject and Chapter before saving to cloud.');
+            return; // Don't proceed with cloud save
+          }
+          
           try {
             const api = new window.MockTestAPI();
             const fileJson = await this.prepareFileForUpload(file, result);
@@ -1191,15 +1205,24 @@ class MockTestApp {
     }
   }
 
-  // Display files in the list
+  // Display files in the list with improved metadata extraction
   displayFiles(files) {
     const fileList = document.getElementById('file-list');
     
     fileList.innerHTML = files.map(file => {
       const uploadDate = new Date(file.uploaded_at).toLocaleDateString();
       const fileJson = file.file_json || {};
-      const subject = fileJson.section || 'Unknown Subject';
-      const questionCount = fileJson.total_questions || 0;
+      
+      // Extract subject with fallbacks
+      const subject = fileJson.metadata?.subject || fileJson.section || 'Unknown Subject';
+      
+      // Extract chapter with fallbacks
+      const chapter = fileJson.metadata?.chapter || 
+                     (fileJson.instructions?.category_distribution ? Object.keys(fileJson.instructions.category_distribution)[0] : '') ||
+                     '';
+      
+      // Extract question count with fallbacks
+      const questionCount = fileJson.questions?.length || fileJson.total_questions || 0;
       
       return `
         <div class="file-item" data-file-id="${file.id}">
@@ -1212,6 +1235,13 @@ class MockTestApp {
                 </svg>
                 <span>${subject}</span>
               </div>
+              ${chapter ? `<div class="file-detail">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                </svg>
+                <span>${chapter}</span>
+              </div>` : ''}
               <div class="file-detail">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="3"></circle>
@@ -1269,14 +1299,16 @@ class MockTestApp {
     }).join('');
   }
 
-  // Update subject filter dropdown
+  // Update subject filter dropdown with improved metadata extraction
   updateSubjectFilter(files) {
     const subjectFilter = document.getElementById('subject-filter');
     if (!subjectFilter) return;
 
     const subjects = new Set();
     files.forEach(file => {
-      const subject = file.file_json?.section || 'Unknown Subject';
+      const fileJson = file.file_json || {};
+      // Use same extraction logic as display
+      const subject = fileJson.metadata?.subject || fileJson.section || 'Unknown Subject';
       subjects.add(subject);
     });
 
@@ -1454,7 +1486,7 @@ window.loadTestFile = async function(id) {
     let questions;
     
     try {
-      questions = manager.parseQuestions(fileData.file_json);
+      questions = manager.parseQuestions(fileData.file_json, fileData.file_name);
     } catch (parseError) {
       throw new Error(`Failed to parse test file: ${parseError.message}`);
     }
