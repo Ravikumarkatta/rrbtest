@@ -3,7 +3,7 @@
   "framework": null,
   "buildCommand": "",
   "devCommand": "",
-  "installCommand": "npm install",
+  "installCommand": "npm install --registry=https://registry.npmjs.org/",
   "functions": {
     "api/**/*.js": {
       "runtime": "nodejs18.x",
@@ -14,11 +14,5 @@
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/(.*)", "dest": "/public/$1" }
-  ],
-  "installCommand": "npm install --registry=https://registry.npmjs.org/",
-  "env": {
-    "NEON_DATABASE_URL": "@NEON_DATABASE_URL",
-    "ALLOWED_ORIGINS": "@ALLOWED_ORIGINS",
-    "NODE_ENV": "production"
-  }
+  ]
 }
