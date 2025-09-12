@@ -154,8 +154,8 @@
     --color-gray-200-rgb: 245, 245, 245;
 
     /* Background color tokens (Dark Mode) */
-    --color-bg-1: rgba(29, 78, 216, 0.15); /* Dark blue */
-    --color-bg-2: rgba(180, 83, 9, 0.15); /* Dark yellow */
+    --color-bg-1: rgba(17, 73, 226, 0.15); /* Dark blue */
+    --color-bg-2: rgba(210, 247, 5, 0.15); /* Dark light green */
     --color-bg-3: rgba(21, 128, 61, 0.15); /* Dark green */
     --color-bg-4: rgba(185, 28, 28, 0.15); /* Dark red */
     --color-bg-5: rgba(107, 33, 168, 0.15); /* Dark purple */
